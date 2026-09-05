@@ -1,0 +1,4 @@
+[
+  {"timestamp": "2025-01-01T10:00:00Z", "src_ip": "10.0.0.12", "signature": "Suspicious PowerShell Execution", "severity": 7},
+  {"timestamp": "2025-01-01T10:05:00Z", "src_ip": "192.168.1.5", "signature": "Port Scan Detected", "severity": 4}
+]
