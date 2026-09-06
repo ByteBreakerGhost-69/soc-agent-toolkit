@@ -116,7 +116,7 @@ async def enrich_ip_async(client: "httpx.AsyncClient", ip: str, sem: asyncio.Sem
             result[provider] = data  # error payload, still recorded for visibility
 
     if not result["providers_used"]:
-        result["note"] = "No reputation API keys configured (ABUSEIPDB_API_KEY / VT_API_KEY / OTX_API_KEY)"
+        result["note"] = "No reputation API keys configured (ABUSEIPDB_API_KEY / VIRUSTOTAL_API_KEY / OTX_API_KEY)"
     elif scores:
         avg = sum(scores) / len(scores)
         result["verdict"] = _verdict_from_score(avg)

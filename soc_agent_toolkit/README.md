@@ -64,7 +64,7 @@ pip install -r requirements.txt
 # Set whichever of these you have — every module degrades gracefully without them:
 export ANTHROPIC_API_KEY=...      # for AI-written summaries / the agentic loop
 export ABUSEIPDB_API_KEY=...      # IP reputation
-export VT_API_KEY=...             # IP / domain / hash reputation (VirusTotal)
+export VIRUSTOTAL_API_KEY=...             # IP / domain / hash reputation (VirusTotal)
 export OTX_API_KEY=...            # IP / domain pulses (AlienVault OTX)
 ```
 
