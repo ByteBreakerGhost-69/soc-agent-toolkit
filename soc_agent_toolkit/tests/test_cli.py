@@ -42,3 +42,24 @@ def test_legacy_enrich_command_remains_supported():
 
     assert args.command == "enrich-ip"
     assert args.ip == "8.8.8.8"
+
+
+def test_doctor_command_is_registered_and_runs(monkeypatch, capsys):
+    from soc_agent_toolkit import cli
+
+    class FakeResponse:
+        status_code = 200
+
+    def fake_get(*args, **kwargs):
+        return FakeResponse()
+
+    monkeypatch.setattr(cli.requests, "get", fake_get)
+
+    parser = cli.build_parser()
+    args = parser.parse_args(["doctor"])
+
+    assert args.func(args) == cli.EXIT_OK
+
+    output = capsys.readouterr().out
+    assert "SOC AGENT DOCTOR" in output
+    assert "All diagnostic checks passed." in output

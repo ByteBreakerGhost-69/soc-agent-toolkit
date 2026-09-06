@@ -16,6 +16,7 @@ import json
 import sys
 import os
 import platform
+import requests
 
 from rich import box
 from rich.console import Console
@@ -688,6 +689,35 @@ def cmd_doctor(_: argparse.Namespace) -> int:
         if config.MITRE_STIX_URL
         else "STIX source missing",
     )
+
+    # Basic outbound HTTPS connectivity.
+    # No API key is sent and no reputation lookup is performed.
+    network_targets = {
+        "VirusTotal": "https://www.virustotal.com",
+        "AbuseIPDB": "https://api.abuseipdb.com",
+        "AlienVault OTX": "https://otx.alienvault.com",
+    }
+
+    reachable = 0
+
+    for provider, url in network_targets.items():
+        try:
+            response = requests.get(
+                url,
+                timeout=config.HTTP_TIMEOUT_SECONDS,
+            )
+            add_check(
+                f"{provider} network",
+                True,
+                f"HTTPS reachable (HTTP {response.status_code})",
+            )
+            reachable += 1
+        except Exception as exc:
+            add_check(
+                f"{provider} network",
+                False,
+                f"unreachable ({type(exc).__name__})",
+            )
 
     # Enrichment providers
     providers = [
