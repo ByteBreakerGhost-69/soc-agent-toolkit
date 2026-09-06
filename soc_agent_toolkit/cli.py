@@ -14,6 +14,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import os
+import platform
 
 from rich import box
 from rich.console import Console
@@ -21,7 +23,7 @@ from rich.panel import Panel
 from rich.progress import Progress, TextColumn
 from rich.table import Table
 
-from . import enrichment, mitre
+from . import enrichment, mitre, triage
 from .agent import run_pipeline
 from .logging_setup import configure_logging, get_logger
 
@@ -338,6 +340,108 @@ def cmd_analyze(args: argparse.Namespace) -> int:
 
     return EXIT_OK
 
+def cmd_triage(args: argparse.Namespace) -> int:
+    """Run alert deduplication and priority scoring."""
+    configure_logging(args.log_level or "WARNING")
+
+    try:
+        raw_input = _read_input(args.input)
+
+        if not raw_input.strip():
+            print(
+                f"Error: {args.input} is empty — nothing to triage.",
+                file=sys.stderr,
+            )
+            return EXIT_INPUT_ERROR
+
+        data = json.loads(raw_input)
+
+        if not isinstance(data, list):
+            print(
+                "Error: triage input must be a JSON array of alerts.",
+                file=sys.stderr,
+            )
+            return EXIT_INPUT_ERROR
+
+        asset_criticality = None
+
+        if args.assets:
+            asset_criticality = _read_asset_criticality(args.assets)
+
+        triaged = triage.triage_alerts(
+            data,
+            asset_criticality=asset_criticality,
+        )
+
+        if args.json:
+            print(
+                json.dumps(
+                    triaged,
+                    ensure_ascii=False,
+                    indent=2,
+                    default=str,
+                )
+            )
+            return EXIT_OK
+
+        table = Table(
+            title="SOC TRIAGE RESULTS",
+            box=box.ROUNDED,
+            expand=True,
+        )
+
+        table.add_column("Priority", style="bold")
+        table.add_column("Score", justify="right")
+        table.add_column("Signature")
+        table.add_column("Source")
+        table.add_column("Target")
+
+        for alert in triaged:
+            table.add_row(
+                str(alert.get("priority_tier", "P4")),
+                str(alert.get("priority_score", 0)),
+                str(alert.get("signature", "Unknown")),
+                str(alert.get("src_ip", "Unknown")),
+                str(alert.get("dest_ip", "Unknown")),
+            )
+
+        console.print(table)
+
+        console.print(
+            f"[dim]{len(triaged)} alerts triaged and sorted by priority[/dim]"
+        )
+
+        return EXIT_OK
+
+    except FileNotFoundError:
+        print(
+            f"Error: input file not found: {args.input}",
+            file=sys.stderr,
+        )
+        return EXIT_INPUT_ERROR
+
+    except PermissionError:
+        print(
+            f"Error: permission denied reading: {args.input}",
+            file=sys.stderr,
+        )
+        return EXIT_INPUT_ERROR
+
+    except json.JSONDecodeError as exc:
+        print(
+            f"Error: {args.input} is not valid JSON ({exc})",
+            file=sys.stderr,
+        )
+        return EXIT_INPUT_ERROR
+
+    except Exception:
+        logger.exception("Triage failed")
+
+        print(
+            "Error: triage failed unexpectedly.",
+            file=sys.stderr,
+        )
+        return EXIT_RUNTIME_ERROR
 
 def cmd_mitre(args: argparse.Namespace) -> int:
     """Map text to MITRE ATT&CK techniques."""
@@ -448,6 +552,121 @@ def cmd_enrich_hash(args: argparse.Namespace) -> int:
 
         return EXIT_RUNTIME_ERROR
 
+def cmd_status(_: argparse.Namespace) -> int:
+    """Show toolkit and integration status."""
+    table = Table(
+        title="SOC AGENT STATUS",
+        box=box.ROUNDED,
+        expand=True,
+    )
+
+    table.add_column("Component", style="bold")
+    table.add_column("Status")
+    table.add_column("Details")
+
+    table.add_row(
+        "Toolkit",
+        "[green]READY[/green]",
+        f"v{VERSION}",
+    )
+
+    table.add_row(
+        "Python",
+        "[green]READY[/green]",
+        platform.python_version(),
+    )
+
+    table.add_row(
+        "Platform",
+        "[green]READY[/green]",
+        platform.system(),
+    )
+
+    table.add_row(
+        "VirusTotal",
+        "[green]CONFIGURED[/green]"
+        if os.getenv("VIRUSTOTAL_API_KEY")
+        else "[yellow]NOT CONFIGURED[/yellow]",
+        "API key detected"
+        if os.getenv("VIRUSTOTAL_API_KEY")
+        else "Set VIRUSTOTAL_API_KEY to enable",
+    )
+
+    table.add_row(
+        "AbuseIPDB",
+        "[green]CONFIGURED[/green]"
+        if os.getenv("ABUSEIPDB_API_KEY")
+        else "[yellow]NOT CONFIGURED[/yellow]",
+        "API key detected"
+        if os.getenv("ABUSEIPDB_API_KEY")
+        else "Set ABUSEIPDB_API_KEY to enable",
+    )
+
+    table.add_row(
+        "AlienVault OTX",
+        "[green]CONFIGURED[/green]"
+        if os.getenv("OTX_API_KEY")
+        else "[yellow]NOT CONFIGURED[/yellow]",
+        "API key detected"
+        if os.getenv("OTX_API_KEY")
+        else "Set OTX_API_KEY to enable",
+    )
+
+    table.add_row(
+        "Claude AI",
+        "[green]CONFIGURED[/green]"
+        if os.getenv("ANTHROPIC_API_KEY")
+        else "[yellow]OFFLINE FALLBACK[/yellow]",
+        "API key detected"
+        if os.getenv("ANTHROPIC_API_KEY")
+        else "Deterministic offline mode",
+    )
+
+    console.print(table)
+    return EXIT_OK
+
+
+def cmd_config(_: argparse.Namespace) -> int:
+    """Show configured environment settings."""
+    table = Table(
+        title="SOC AGENT CONFIG",
+        box=box.ROUNDED,
+        expand=True,
+    )
+
+    table.add_column("Setting", style="bold")
+    table.add_column("Status")
+    table.add_column("Value")
+
+    settings = [
+        ("VIRUSTOTAL_API_KEY", os.getenv("VIRUSTOTAL_API_KEY")),
+        ("ABUSEIPDB_API_KEY", os.getenv("ABUSEIPDB_API_KEY")),
+        ("OTX_API_KEY", os.getenv("OTX_API_KEY")),
+        ("ANTHROPIC_API_KEY", os.getenv("ANTHROPIC_API_KEY")),
+        ("SOC_TOOLKIT_LOG_LEVEL", os.getenv("SOC_TOOLKIT_LOG_LEVEL")),
+    ]
+
+    for name, value in settings:
+        if value:
+            display = "configured"
+            if name.endswith("API_KEY"):
+                display = "********"
+            table.add_row(
+                name,
+                "[green]SET[/green]",
+                display,
+            )
+        else:
+            table.add_row(
+                name,
+                "[yellow]NOT SET[/yellow]",
+                "—",
+            )
+
+    console.print(table)
+    return EXIT_OK
+
+
 def cmd_version(_: argparse.Namespace) -> int:
     """Print the CLI version."""
     print(f"SOC Agent Toolkit v{VERSION}")
@@ -467,6 +686,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(
         dest="command",
         required=True,
+        metavar="{analyze,triage,mitre,enrich,status,config,version}",
     )
 
     analyze_parser = subparsers.add_parser(
@@ -504,6 +724,35 @@ def build_parser() -> argparse.ArgumentParser:
 
     analyze_parser.set_defaults(func=cmd_analyze)
 
+    triage_parser = subparsers.add_parser(
+        "triage",
+        help="Deduplicate and prioritize security alerts",
+    )
+
+    triage_parser.add_argument(
+        "input",
+        help="Path to JSON alert file, or '-' to read from stdin",
+    )
+
+    triage_parser.add_argument(
+        "--assets",
+        help="Optional JSON file mapping IP/hostname to criticality weight",
+    )
+
+    triage_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print triaged alerts as JSON",
+    )
+
+    triage_parser.add_argument(
+        "--log-level",
+        default=None,
+        help="DEBUG, INFO, WARNING, ERROR",
+    )
+
+    triage_parser.set_defaults(func=cmd_triage)
+
     mitre_parser = subparsers.add_parser(
         "mitre",
         help="Map text to MITRE ATT&CK techniques",
@@ -516,9 +765,50 @@ def build_parser() -> argparse.ArgumentParser:
 
     mitre_parser.set_defaults(func=cmd_mitre)
 
+    # Grouped enrichment commands
+    enrich_parser = subparsers.add_parser(
+        "enrich",
+        help="Enrich IPs, domains, and file hashes",
+    )
+
+    enrich_subparsers = enrich_parser.add_subparsers(
+        dest="enrich_type",
+        required=True,
+    )
+
+    enrich_ip_group_parser = enrich_subparsers.add_parser(
+        "ip",
+        help="Check IP reputation",
+    )
+    enrich_ip_group_parser.add_argument(
+        "ip",
+        help="IPv4 or IPv6 address to investigate",
+    )
+    enrich_ip_group_parser.set_defaults(func=cmd_enrich_ip)
+
+    enrich_domain_group_parser = enrich_subparsers.add_parser(
+        "domain",
+        help="Check domain reputation",
+    )
+    enrich_domain_group_parser.add_argument(
+        "domain",
+        help="Domain to investigate",
+    )
+    enrich_domain_group_parser.set_defaults(func=cmd_enrich_domain)
+
+    enrich_hash_group_parser = enrich_subparsers.add_parser(
+        "hash",
+        help="Check file hash reputation",
+    )
+    enrich_hash_group_parser.add_argument(
+        "hash",
+        help="MD5, SHA1, or SHA256 file hash to investigate",
+    )
+    enrich_hash_group_parser.set_defaults(func=cmd_enrich_hash)
+
     enrich_ip_parser = subparsers.add_parser(
         "enrich-ip",
-        help="Check IP reputation",
+        help=argparse.SUPPRESS,
     )
 
     enrich_ip_parser.add_argument(
@@ -530,7 +820,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     enrich_domain_parser = subparsers.add_parser(
         "enrich-domain",
-        help="Check domain reputation",
+        help=argparse.SUPPRESS,
     )
 
     enrich_domain_parser.add_argument(
@@ -542,7 +832,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     enrich_hash_parser = subparsers.add_parser(
         "enrich-hash",
-        help="Check file hash reputation",
+        help=argparse.SUPPRESS,
     )
 
     enrich_hash_parser.add_argument(
@@ -552,12 +842,33 @@ def build_parser() -> argparse.ArgumentParser:
 
     enrich_hash_parser.set_defaults(func=cmd_enrich_hash)
 
+    status_parser = subparsers.add_parser(
+        "status",
+        help="Show toolkit and integration status",
+    )
+
+    status_parser.set_defaults(func=cmd_status)
+
+    config_parser = subparsers.add_parser(
+        "config",
+        help="Show toolkit configuration status",
+    )
+
+    config_parser.set_defaults(func=cmd_config)
+
     version_parser = subparsers.add_parser(
         "version",
         help="Show SOC Agent Toolkit version",
     )
 
     version_parser.set_defaults(func=cmd_version)
+
+    hidden_commands = {"enrich-ip", "enrich-domain", "enrich-hash"}
+    subparsers._choices_actions = [
+        action
+        for action in subparsers._choices_actions
+        if action.dest not in hidden_commands
+    ]
 
     return parser
 
