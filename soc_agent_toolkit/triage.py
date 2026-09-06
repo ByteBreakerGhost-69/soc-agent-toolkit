@@ -4,8 +4,8 @@ triage.py — Deduplicate, score, and prioritize normalized alerts.
 Dedup (item #9 from the review): the original version grouped alerts purely
 by an exact (signature, src_ip, dest_ip) fingerprint, which has two gaps:
   1. Two alerts with the same fingerprint but weeks apart get silently
-     merged into one "occurrence_count=2" alert, hiding that it's actually
-     a fresh, unrelated incident.
+     merged into one "occurrence_count=2" alert, hiding that it's actually a
+     fresh, unrelated incident.
   2. Two alerts that are obviously the same *kind* of event but have
      slightly different signature text (e.g. "SSH Brute Force" vs "SSH
      Brute-Force Attempt" from two different sensors) are treated as
@@ -104,6 +104,9 @@ def dedup_alerts(
     alerts whose timestamps fall within `time_window_minutes` of the group's
     most recent member. Returns one representative alert per group with
     `occurrence_count`, `first_seen`/`last_seen`, and `related_ids` added.
+
+    Alert dictionaries do not require an ``id`` field. When an alert has no
+    ID, it is omitted from ``related_ids`` rather than causing triage to fail.
     """
     time_window_minutes = time_window_minutes if time_window_minutes is not None else config.DEDUP_TIME_WINDOW_MINUTES
     fuzzy_threshold = fuzzy_threshold if fuzzy_threshold is not None else config.DEDUP_FUZZY_SIGNATURE_THRESHOLD
@@ -139,7 +142,7 @@ def dedup_alerts(
             rep["occurrence_count"] = len(members)
             rep["first_seen"] = min(timestamps) if timestamps else None
             rep["last_seen"] = max(timestamps) if timestamps else None
-            rep["related_ids"] = [m["id"] for m in members]
+            rep["related_ids"] = [m["id"] for m in members if m.get("id") is not None]
             deduped.append(rep)
 
     logger.info("dedup_alerts: %d raw -> %d deduped (window=%dm, fuzzy>=%.2f)",
