@@ -122,7 +122,7 @@ python -m pip install -e .
 
 ## Quick Start
 
-Analyze an alert file:
+Analyze the included example alerts:
 
 ```bash
 soc-agent analyze alerts.json
@@ -168,6 +168,63 @@ Show all CLI options:
 
 ```bash
 soc-agent --help
+```
+
+## Example Usage
+
+The repository includes [`alerts.json`](alerts.json) so you can try the full pipeline immediately after installation.
+
+Example input:
+
+```json
+[
+  {
+    "timestamp": "2025-01-01T10:00:00Z",
+    "src_ip": "10.0.0.12",
+    "dest_ip": "192.168.1.20",
+    "signature": "Suspicious PowerShell Execution",
+    "severity": 8,
+    "message": "Encoded PowerShell command executed on endpoint"
+  },
+  {
+    "timestamp": "2025-01-01T10:10:00Z",
+    "src_ip": "203.0.113.5",
+    "dest_ip": "10.0.0.12",
+    "signature": "SSH Brute Force Login Attempt",
+    "severity": 9,
+    "message": "Multiple failed SSH login attempts for admin account"
+  }
+]
+```
+
+Run:
+
+```bash
+soc-agent analyze alerts.json
+```
+
+The resulting workflow is:
+
+```text
+Raw alerts
+   ↓
+Normalized events
+   ↓
+MITRE ATT&CK techniques
+   ↓
+IOC reputation evidence
+   ↓
+Deduplicated alerts
+   ↓
+Priority score + P1–P4
+   ↓
+Incident summary
+```
+
+For automation:
+
+```bash
+soc-agent analyze alerts.json --json > result.json
 ```
 
 ## Interactive TUI
