@@ -644,6 +644,102 @@ def cmd_status(_: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_doctor(_: argparse.Namespace) -> int:
+    """Run basic toolkit health checks."""
+    checks = []
+
+    def add_check(name: str, ok: bool, details: str) -> None:
+        checks.append((name, ok, details))
+
+    # Python runtime
+    add_check(
+        "Python",
+        sys.version_info >= (3, 10),
+        platform.python_version(),
+    )
+
+    # Core dependencies
+    dependency_checks = [
+        ("requests", "requests"),
+        ("httpx", "httpx"),
+        ("rich", "rich"),
+        ("anthropic", "anthropic"),
+    ]
+
+    for display_name, module_name in dependency_checks:
+        try:
+            __import__(module_name)
+            add_check(display_name, True, "available")
+        except ImportError:
+            add_check(display_name, False, "missing")
+
+    # Configuration source
+    add_check(
+        "Configuration",
+        bool(config.ANTHROPIC_MODEL),
+        f"model={config.ANTHROPIC_MODEL}",
+    )
+
+    # MITRE source
+    add_check(
+        "MITRE dataset",
+        bool(config.MITRE_STIX_URL),
+        "STIX source configured"
+        if config.MITRE_STIX_URL
+        else "STIX source missing",
+    )
+
+    # Enrichment providers
+    providers = [
+        ("VirusTotal", "VIRUSTOTAL_API_KEY"),
+        ("AbuseIPDB", "ABUSEIPDB_API_KEY"),
+        ("AlienVault OTX", "OTX_API_KEY"),
+        ("Claude AI", "ANTHROPIC_API_KEY"),
+    ]
+
+    configured_count = sum(
+        1 for _, env_name in providers if os.getenv(env_name)
+    )
+
+    add_check(
+        "Integrations",
+        True,
+        f"{configured_count}/{len(providers)} providers configured",
+    )
+
+    table = Table(
+        title="SOC AGENT DOCTOR",
+        box=box.ROUNDED,
+        expand=True,
+    )
+
+    table.add_column("Check", style="bold")
+    table.add_column("Status")
+    table.add_column("Details")
+
+    for name, ok, details in checks:
+        table.add_row(
+            name,
+            "[green]PASS[/green]" if ok else "[red]FAIL[/red]",
+            details,
+        )
+
+    console.print(table)
+
+    failed = sum(1 for _, ok, _ in checks if not ok)
+
+    console.print()
+
+    if failed:
+        console.print(
+            f"[red]Doctor found {failed} problem(s).[/red]"
+        )
+        return EXIT_RUNTIME_ERROR
+
+    console.print("[green]All diagnostic checks passed.[/green]")
+    return EXIT_OK
+
+
 def cmd_config(_: argparse.Namespace) -> int:
     """Show toolkit configuration."""
     table = Table(
@@ -768,7 +864,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(
         dest="command",
         required=True,
-        metavar="{analyze,triage,mitre,enrich,status,config,version}",
+        metavar="{analyze,triage,mitre,enrich,status,config,doctor,version}",
     )
 
     analyze_parser = subparsers.add_parser(
@@ -930,6 +1026,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     status_parser.set_defaults(func=cmd_status)
+
+    doctor_parser = subparsers.add_parser(
+        "doctor",
+        help="Run toolkit health checks",
+    )
+
+    doctor_parser.set_defaults(func=cmd_doctor)
 
     config_parser = subparsers.add_parser(
         "config",
