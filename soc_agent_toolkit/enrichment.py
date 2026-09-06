@@ -72,10 +72,21 @@ def _get_json(url: str, headers: dict | None = None, params: dict | None = None,
 
 def is_private_ip(ip: str) -> bool:
     try:
-        return ipaddress.ip_address(ip).is_private
+        address = ipaddress.ip_address(ip)
+
+        private_networks = (
+            ipaddress.ip_network("10.0.0.0/8"),
+            ipaddress.ip_network("172.16.0.0/12"),
+            ipaddress.ip_network("192.168.0.0/16"),
+        )
+
+        return any(
+            address in network
+            for network in private_networks
+        )
+
     except ValueError:
         return False
-
 
 def detect_hash_type(value: str) -> str | None:
     for htype, pattern in _HASH_RE.items():

@@ -35,6 +35,5 @@ def configure_logging(level: str | None = None) -> None:
 
 
 def get_logger(name: str) -> logging.Logger:
-    """Convenience wrapper — ensures logging is configured before handing back a logger."""
-    configure_logging()
+    """Return a logger without configuring global logging."""
     return logging.getLogger(name)

@@ -3,3 +3,4 @@ anthropic>=0.40
 httpx>=0.27          # optional: only needed for enrichment_async.py
 python-dateutil>=2.9 # optional: improves timestamp parsing accuracy in triage.py dedup
 pytest>=8.0          # dev/test only
+rich
