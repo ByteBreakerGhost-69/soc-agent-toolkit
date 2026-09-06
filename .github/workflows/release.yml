@@ -3,18 +3,15 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
-
-permissions:
-  contents: read
-  id-token: write
+  workflow_dispatch:
 
 jobs:
   publish:
     name: Build and publish package
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/soc-agent-toolkit
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout repository
