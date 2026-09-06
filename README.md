@@ -2,79 +2,92 @@
 
 **AI-assisted SOC alert triage and incident analysis toolkit for the command line.**
 
-SOC Agent Toolkit is a modular Python CLI for processing security alerts from the terminal. It normalizes alerts, maps events to MITRE ATT&CK techniques, enriches indicators of compromise (IOCs), deduplicates related alerts, prioritizes incidents, and generates analyst-ready incident summaries.
+[![PyPI version](https://img.shields.io/pypi/v/soc-agent-toolkit.svg)](https://pypi.org/project/soc-agent-toolkit/)
+[![Python](https://img.shields.io/pypi/pyversions/soc-agent-toolkit.svg)](https://pypi.org/project/soc-agent-toolkit/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/soc-agent-toolkit.svg)](https://pypi.org/project/soc-agent-toolkit/)
+[![Publish to PyPI](https://github.com/ByteBreakerGhost-69/soc-agent-toolkit/actions/workflows/publish.yml/badge.svg)](https://github.com/ByteBreakerGhost-69/soc-agent-toolkit/actions/workflows/publish.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+SOC Agent Toolkit is a modular Python CLI for terminal-based security operations. It parses and normalizes alerts, maps events to MITRE ATT&CK techniques, enriches indicators of compromise (IOCs), deduplicates related alerts, prioritizes incidents, and produces analyst-ready summaries.
 
 Designed for **Linux, WSL, macOS, Windows PowerShell, and Windows CMD**.
 
-> Defensive security tooling only. Use it only with systems, logs, domains, IPs, and files you are authorized to investigate.
+> **Defensive security only.** Use this project only with systems, logs, domains, IPs, and files you are authorized to investigate.
+
+## What it does
+
+```text
+                    Security Alerts
+                           │
+                           ▼
+                 ┌──────────────────┐
+                 │      Parser      │
+                 │ JSON / CEF /     │
+                 │      Syslog      │
+                 └────────┬─────────┘
+                          │
+                          ▼
+                 ┌──────────────────┐
+                 │   MITRE ATT&CK   │
+                 │      Mapping     │
+                 └────────┬─────────┘
+                          │
+                          ▼
+                 ┌──────────────────┐
+                 │  IOC Enrichment  │
+                 │ IP / Domain /    │
+                 │      Hash        │
+                 └────────┬─────────┘
+                          │
+                          ▼
+                 ┌──────────────────┐
+                 │ Deduplication +  │
+                 │ Priority Scoring │
+                 └────────┬─────────┘
+                          │
+                          ▼
+                 ┌──────────────────┐
+                 │ Incident Summary │
+                 │ AI / Deterministic│
+                 └──────────────────┘
+```
 
 ## Features
 
-- **Multi-format alert parsing** — JSON, CEF, and syslog
-- **MITRE ATT&CK mapping** — heuristic mapping with optional STIX-based matching
+- **Multi-format parsing** — JSON, CEF, and syslog
+- **MITRE ATT&CK mapping** — heuristic technique matching with optional STIX-based matching
 - **IOC enrichment** — IP, domain, and file-hash reputation through configured threat-intelligence providers
 - **Smart deduplication** — fuzzy signature matching with a configurable time window
-- **Priority scoring** — scores alerts from 0–100 and assigns P1–P4 tiers
-- **Asset criticality weighting** — increases priority for important hosts or assets
-- **AI incident summaries** — Claude-powered summaries with an offline deterministic fallback
-- **Interactive terminal UI** — logo, system status, command menu, and interactive prompt
-- **Live pipeline progress** — visible stages for parsing, MITRE mapping, enrichment, triage, and summarization
-- **Machine-readable JSON** — structured output for scripts and automation
-- **CLI-first design** — built for terminal and security workflows
-- **Defensive only** — no automatic blocking, isolation, or production changes
-
-## Architecture
-
-```text
-                 Raw Security Alerts
-                         │
-                         ▼
-                  ┌──────────────┐
-                  │    Parser    │
-                  │ JSON / CEF / │
-                  │    Syslog    │
-                  └──────┬───────┘
-                         │
-                         ▼
-                  ┌──────────────┐
-                  │    MITRE     │
-                  │ ATT&CK Map   │
-                  └──────┬───────┘
-                         │
-                         ▼
-                  ┌──────────────┐
-                  │     IOC      │
-                  │  Enrichment  │
-                  └──────┬───────┘
-                         │
-                         ▼
-                  ┌──────────────┐
-                  │ Deduplication│
-                  │  + Scoring   │
-                  └──────┬───────┘
-                         │
-                         ▼
-                  ┌──────────────┐
-                  │ Priority P1  │
-                  │    to P4     │
-                  └──────┬───────┘
-                         │
-                         ▼
-                  ┌──────────────┐
-                  │ AI Incident  │
-                  │   Summary    │
-                  └──────────────┘
-```
-
-## Requirements
-
-- Python **3.10+**
-- Git
-- Internet access only when using external threat-intelligence providers or Claude
+- **Priority scoring** — 0–100 score with P1–P4 priority tiers
+- **Asset criticality weighting** — increases priority for important assets
+- **AI incident summaries** — Claude-powered summaries with a deterministic offline fallback
+- **Interactive terminal UI** — Rich-based interface with status, commands, and progress
+- **Live pipeline progress** — parsing, mapping, enrichment, triage, and summarization stages
+- **Machine-readable JSON** — useful for scripts and automation
+- **CLI-first design** — built for terminal workflows
+- **Defensive-only behavior** — no automatic blocking, isolation, or production changes
 
 ## Installation
 
-### Development / from source
+### From PyPI
+
+```bash
+python -m pip install soc-agent-toolkit
+```
+
+Then verify the installation:
+
+```bash
+soc-agent version
+```
+
+Launch the interactive terminal UI:
+
+```bash
+soc-agent
+```
+
+### From source
 
 ```bash
 git clone https://github.com/ByteBreakerGhost-69/soc-agent-toolkit.git
@@ -100,33 +113,68 @@ Windows CMD:
 .venv\Scripts\activate
 ```
 
-Install the package:
+Install in editable mode:
 
 ```bash
 python -m pip install --upgrade pip
-pip install -e .
+python -m pip install -e .
 ```
 
-The `soc-agent` executable is then available in the active environment.
+## Quick Start
 
-### Package installation
-
-Once published to PyPI, the intended user experience is:
+Analyze an alert file:
 
 ```bash
-pip install soc-agent-toolkit
-soc-agent
+soc-agent analyze alerts.json
+```
+
+Return machine-readable JSON:
+
+```bash
+soc-agent analyze alerts.json --json
+```
+
+Analyze from stdin:
+
+```bash
+cat alerts.json | soc-agent analyze -
+```
+
+Map text to MITRE ATT&CK:
+
+```bash
+soc-agent mitre "SSH brute force login attempt"
+```
+
+Check an IP reputation:
+
+```bash
+soc-agent enrich-ip 8.8.8.8
+```
+
+Check a domain reputation:
+
+```bash
+soc-agent enrich-domain example.com
+```
+
+Check a file hash reputation:
+
+```bash
+soc-agent enrich-hash 44d88612fea8a8f36de82e1278abb02f
+```
+
+Show all CLI options:
+
+```bash
+soc-agent --help
 ```
 
 ## Interactive TUI
 
-Running `soc-agent` without arguments opens the interactive terminal interface:
+Running `soc-agent` without arguments opens the interactive terminal interface.
 
-```bash
-soc-agent
-```
-
-Available commands inside the prompt:
+Available commands include:
 
 ```text
 analyze <file>              Analyze security alerts
@@ -139,61 +187,27 @@ help                        Show commands
 exit                        Exit
 ```
 
-The interface also displays toolkit status, the author footer, and pipeline progress during analysis.
+The interface shows toolkit status and pipeline progress during analysis.
 
-## CLI Usage
+## Alert Analysis Pipeline
 
-### Help
-
-```bash
-soc-agent --help
-```
-
-### Analyze alerts
-
-```bash
-soc-agent analyze alerts.json
-```
-
-The pipeline performs:
+For an alert analysis request, the toolkit processes events through:
 
 ```text
 Parse
- ↓
-MITRE mapping
- ↓
+  ↓
+MITRE ATT&CK mapping
+  ↓
 IOC enrichment
- ↓
+  ↓
 Deduplication
- ↓
+  ↓
 Priority scoring
- ↓
+  ↓
 Incident summary
 ```
 
-### JSON output
-
-```bash
-soc-agent analyze alerts.json --json
-```
-
-The JSON result is suitable for automation and can be redirected to a file:
-
-```bash
-soc-agent analyze alerts.json --json > result.json
-```
-
-### Analyze from stdin
-
-```bash
-cat alerts.json | soc-agent analyze -
-```
-
-This allows SOC Agent Toolkit to be chained with other command-line tools.
-
-### Asset criticality
-
-Create `assets.json`:
+Asset criticality can also be supplied to influence the final priority score:
 
 ```json
 {
@@ -202,13 +216,19 @@ Create `assets.json`:
 }
 ```
 
-Run:
-
 ```bash
 soc-agent analyze alerts.json --assets assets.json
 ```
 
-Higher asset criticality increases the priority score of related alerts.
+## JSON Automation
+
+The `--json` mode is designed for shell pipelines and automation:
+
+```bash
+soc-agent analyze alerts.json --json > result.json
+```
+
+Because progress output is kept separate from the structured result, the JSON output can be consumed by other tools without mixing progress messages into the payload.
 
 ## MITRE ATT&CK Mapping
 
@@ -216,7 +236,7 @@ Higher asset criticality increases the priority score of related alerts.
 soc-agent mitre "SSH brute force login attempt"
 ```
 
-Example:
+Example result:
 
 ```text
 MITRE ATT&CK Matches
@@ -227,45 +247,37 @@ Tactic: Credential Access
 
 ## IOC Enrichment
 
-### IP
+Supported indicator types:
 
-```bash
-soc-agent enrich-ip 8.8.8.8
-```
+| Indicator | Command |
+| --- | --- |
+| IP address | `soc-agent enrich-ip <ip>` |
+| Domain | `soc-agent enrich-domain <domain>` |
+| File hash | `soc-agent enrich-hash <hash>` |
 
-### Domain
-
-```bash
-soc-agent enrich-domain example.com
-```
-
-### File hash
-
-```bash
-soc-agent enrich-hash 44d88612fea8a8f36de82e1278abb02f
-```
-
-Supported hash inputs include MD5, SHA-1, and SHA-256.
+Supported hash inputs include **MD5, SHA-1, and SHA-256**.
 
 When a reputation provider is unavailable, the toolkit reports `unknown` rather than inventing reputation data.
 
-## Threat Intelligence Configuration
+## Threat Intelligence Providers
 
-Supported environment variables:
+The toolkit can use the following external services when configured:
+
+- AbuseIPDB
+- VirusTotal
+- AlienVault OTX
+- Anthropic Claude for AI-generated incident summaries
+
+Environment variables:
 
 ```text
 ABUSEIPDB_API_KEY
 VT_API_KEY
 OTX_API_KEY
-```
-
-Claude integration uses:
-
-```text
 ANTHROPIC_API_KEY
 ```
 
-### Linux / WSL / macOS
+Linux / WSL / macOS:
 
 ```bash
 export VT_API_KEY="YOUR_KEY"
@@ -274,7 +286,7 @@ export OTX_API_KEY="YOUR_KEY"
 export ANTHROPIC_API_KEY="YOUR_KEY"
 ```
 
-### Windows PowerShell
+Windows PowerShell:
 
 ```powershell
 $env:VT_API_KEY="YOUR_KEY"
@@ -283,13 +295,13 @@ $env:OTX_API_KEY="YOUR_KEY"
 $env:ANTHROPIC_API_KEY="YOUR_KEY"
 ```
 
-Never commit API keys, tokens, passwords, or secret `.env` files to GitHub.
+**Never commit API keys, tokens, passwords, or secret `.env` files to GitHub.**
 
 ## Offline Behavior
 
-External enrichment is optional. Without reputation API keys, enrichment returns an `unknown` verdict when external evidence is unavailable.
+External enrichment is optional. Without reputation API keys, unavailable reputation evidence is represented as `unknown`.
 
-Without Claude, the toolkit uses a deterministic offline incident-summary fallback so the core parsing, MITRE mapping, triage, deduplication, and scoring pipeline can continue.
+Without Claude, the toolkit uses a deterministic offline incident-summary fallback so the core parsing, MITRE mapping, deduplication, triage, and scoring flow can continue without an AI API call.
 
 ## Priority Model
 
@@ -302,13 +314,12 @@ P3 — Medium
 P4 — Low
 ```
 
-The score can incorporate alert severity, repeated occurrences, IOC reputation, MITRE ATT&CK matches, and asset criticality.
+The scoring model can incorporate factors such as alert severity, repeated occurrences, IOC reputation, MITRE ATT&CK matches, and asset criticality.
 
 ## Project Structure
 
 ```text
 soc-agent-toolkit/
-│
 ├── soc_agent_toolkit/
 │   ├── __init__.py
 │   ├── agent.py
@@ -325,10 +336,10 @@ soc-agent-toolkit/
 │   ├── summarizer.py
 │   ├── triage.py
 │   └── tui.py
-│
-├── soc_agent_toolkit/tests/
+├── tests/
 ├── alerts.json
 ├── pyproject.toml
+├── LICENSE
 ├── .gitignore
 └── README.md
 ```
@@ -343,54 +354,25 @@ soc-agent-toolkit/
 | `enrichment_async.py` | Concurrent enrichment |
 | `triage.py` | Deduplication and priority scoring |
 | `summarizer.py` | AI and offline incident summaries |
-| `schemas.py` | AI tool-use definitions and dispatcher |
-| `agent.py` | End-to-end pipeline and agentic loop |
+| `schemas.py` | Tool definitions and dispatcher |
+| `agent.py` | End-to-end analysis pipeline and agentic loop |
 | `cli.py` | Command-line interface |
 | `tui.py` | Interactive Rich terminal interface |
 | `config.py` | Configurable scoring and toolkit settings |
 
-## Example Workflow
+## Development
 
-```bash
-# Launch interactive TUI
-soc-agent
-
-# Analyze alerts
-soc-agent analyze alerts.json
-
-# Get structured JSON output
-soc-agent analyze alerts.json --json
-
-# Map an alert to MITRE ATT&CK
-soc-agent mitre "SSH brute force login attempt"
-
-# Check an IP
-soc-agent enrich-ip 8.8.8.8
-
-# Check a domain
-soc-agent enrich-domain example.com
-
-# Check a file hash
-soc-agent enrich-hash 44d88612fea8a8f36de82e1278abb02f
-
-# Show version
-soc-agent version
-```
-
-## Testing
-
-Run the full test suite:
+Install development dependencies as needed for your environment, then run the test suite:
 
 ```bash
 pytest -q
 ```
 
-Expected project validation includes:
+Useful validation commands:
 
 ```bash
-python -m py_compile soc_agent_toolkit/cli.py
 python -m compileall -q soc_agent_toolkit
-pytest -q
+git diff --check
 ```
 
 ## Design Principles
@@ -405,29 +387,34 @@ When reputation information is unavailable, the toolkit reports `unknown` instea
 
 ### Deterministic core
 
-The main security pipeline remains deterministic and inspectable, while AI is used for natural-language reasoning and analyst-facing summaries.
+The security pipeline is designed to remain inspectable and reproducible, while AI is used for analyst-facing natural-language summaries.
 
 ### CLI-first
 
-The project is designed to work naturally inside terminal-based SOC workflows and automation pipelines.
+The project is intended to fit naturally into terminal-based SOC workflows and automation pipelines.
 
 ## Roadmap
 
-- Additional threat-intelligence providers
-- Expanded MITRE ATT&CK coverage
-- More extensive test coverage
-- CI/CD automation
-- Package distribution and release automation
-- Improved AI agent workflows
+- Expand MITRE ATT&CK coverage
+- Add more threat-intelligence providers
+- Increase automated test coverage
+- Improve AI-assisted analyst workflows
+- Add richer operational documentation and examples
+
+## Security
+
+Please do not use this project to access, scan, or modify systems without authorization.
+
+For security-sensitive issues, please avoid publishing credentials or exploit details in a public issue. Use the repository's supported private reporting path when available.
 
 ## License
 
-This project is currently distributed without a declared license.
-
-A permissive open-source license such as **MIT** can be added before public package distribution.
+This project is licensed under the **MIT License**. See [LICENSE](LICENSE).
 
 ## Author
 
 **Maulana Yasyfa’u Al Azhiim Yudho Leksono**
 
 GitHub: https://github.com/ByteBreakerGhost-69
+
+Project: https://github.com/ByteBreakerGhost-69/soc-agent-toolkit
