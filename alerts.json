@@ -1,4 +1,26 @@
 [
-  {"timestamp": "2025-01-01T10:00:00Z", "src_ip": "10.0.0.12", "signature": "Suspicious PowerShell Execution", "severity": 7},
-  {"timestamp": "2025-01-01T10:05:00Z", "src_ip": "192.168.1.5", "signature": "Port Scan Detected", "severity": 4}
+  {
+    "timestamp": "2025-01-01T10:00:00Z",
+    "src_ip": "10.0.0.12",
+    "dest_ip": "192.168.1.20",
+    "signature": "Suspicious PowerShell Execution",
+    "severity": 8,
+    "message": "Encoded PowerShell command executed on endpoint"
+  },
+  {
+    "timestamp": "2025-01-01T10:05:00Z",
+    "src_ip": "192.168.1.5",
+    "dest_ip": "10.0.0.20",
+    "signature": "Port Scan Detected",
+    "severity": 4,
+    "message": "Multiple connection attempts across destination ports"
+  },
+  {
+    "timestamp": "2025-01-01T10:10:00Z",
+    "src_ip": "203.0.113.5",
+    "dest_ip": "10.0.0.12",
+    "signature": "SSH Brute Force Login Attempt",
+    "severity": 9,
+    "message": "Multiple failed SSH login attempts for admin account"
+  }
 ]
