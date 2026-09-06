@@ -23,7 +23,7 @@ from rich.panel import Panel
 from rich.progress import Progress, TextColumn
 from rich.table import Table
 
-from . import enrichment, mitre, triage
+from . import config, enrichment, mitre, triage
 from .agent import run_pipeline
 from .logging_setup import configure_logging, get_logger
 
@@ -583,6 +583,24 @@ def cmd_status(_: argparse.Namespace) -> int:
     )
 
     table.add_row(
+        "AI Model",
+        "[green]CONFIGURED[/green]",
+        config.ANTHROPIC_MODEL,
+    )
+
+    table.add_row(
+        "MITRE Dataset",
+        "[green]CONFIGURED[/green]",
+        "Remote STIX source",
+    )
+
+    table.add_row(
+        "Enrichment Cache",
+        "[green]READY[/green]",
+        f"TTL {config.ENRICHMENT_CACHE_TTL_SECONDS}s",
+    )
+
+    table.add_row(
         "VirusTotal",
         "[green]CONFIGURED[/green]"
         if os.getenv("VIRUSTOTAL_API_KEY")
@@ -627,7 +645,7 @@ def cmd_status(_: argparse.Namespace) -> int:
 
 
 def cmd_config(_: argparse.Namespace) -> int:
-    """Show configured environment settings."""
+    """Show toolkit configuration."""
     table = Table(
         title="SOC AGENT CONFIG",
         box=box.ROUNDED,
@@ -635,36 +653,100 @@ def cmd_config(_: argparse.Namespace) -> int:
     )
 
     table.add_column("Setting", style="bold")
-    table.add_column("Status")
     table.add_column("Value")
 
-    settings = [
-        ("VIRUSTOTAL_API_KEY", os.getenv("VIRUSTOTAL_API_KEY")),
-        ("ABUSEIPDB_API_KEY", os.getenv("ABUSEIPDB_API_KEY")),
-        ("OTX_API_KEY", os.getenv("OTX_API_KEY")),
-        ("ANTHROPIC_API_KEY", os.getenv("ANTHROPIC_API_KEY")),
-        ("SOC_TOOLKIT_LOG_LEVEL", os.getenv("SOC_TOOLKIT_LOG_LEVEL")),
+    rows = [
+        ("AI Model", config.ANTHROPIC_MODEL),
+        ("VT Vote Weight", str(config.VT_MALICIOUS_VOTE_WEIGHT)),
+        ("OTX Pulse Weight", str(config.OTX_PULSE_WEIGHT)),
+        (
+            "Malicious Threshold",
+            str(config.VERDICT_MALICIOUS_THRESHOLD),
+        ),
+        (
+            "Suspicious Threshold",
+            str(config.VERDICT_SUSPICIOUS_THRESHOLD),
+        ),
+        (
+            "Hash Malicious Vendors",
+            str(config.HASH_MALICIOUS_VENDOR_COUNT),
+        ),
+        (
+            "Hash Suspicious Vendors",
+            str(config.HASH_SUSPICIOUS_VENDOR_COUNT),
+        ),
+        ("Severity Weight", str(config.SEVERITY_WEIGHT)),
+        (
+            "Repeat Occurrence Points",
+            str(config.REPEAT_OCCURRENCE_POINTS),
+        ),
+        ("Repeat Occurrence Cap", str(config.REPEAT_OCCURRENCE_CAP)),
+        (
+            "Enrichment Boost Multiplier",
+            str(config.ENRICHMENT_BOOST_MULTIPLIER),
+        ),
+        ("MITRE Match Bonus", str(config.MITRE_MATCH_BONUS)),
+        ("P1 Threshold", str(config.TIER_P1_THRESHOLD)),
+        ("P2 Threshold", str(config.TIER_P2_THRESHOLD)),
+        ("P3 Threshold", str(config.TIER_P3_THRESHOLD)),
+        (
+            "Enrichment Cache TTL",
+            f"{config.ENRICHMENT_CACHE_TTL_SECONDS}s",
+        ),
+        (
+            "Dedup Window",
+            f"{config.DEDUP_TIME_WINDOW_MINUTES} min",
+        ),
+        (
+            "Dedup Fuzzy Threshold",
+            str(config.DEDUP_FUZZY_SIGNATURE_THRESHOLD),
+        ),
+        (
+            "Async Concurrency",
+            str(config.ASYNC_ENRICHMENT_CONCURRENCY),
+        ),
+        (
+            "HTTP Timeout",
+            f"{config.HTTP_TIMEOUT_SECONDS}s",
+        ),
+        ("Log Level", os.getenv("SOC_TOOLKIT_LOG_LEVEL", "WARNING")),
     ]
 
-    for name, value in settings:
-        if value:
-            display = "configured"
-            if name.endswith("API_KEY"):
-                display = "********"
-            table.add_row(
-                name,
-                "[green]SET[/green]",
-                display,
-            )
-        else:
-            table.add_row(
-                name,
-                "[yellow]NOT SET[/yellow]",
-                "—",
-            )
+    for name, value in rows:
+        table.add_row(name, value)
 
     console.print(table)
+
+    console.print()
+
+    api_table = Table(
+        title="INTEGRATIONS",
+        box=box.SIMPLE,
+        expand=True,
+    )
+
+    api_table.add_column("Provider", style="bold")
+    api_table.add_column("Status")
+
+    providers = [
+        ("VirusTotal", "VIRUSTOTAL_API_KEY"),
+        ("AbuseIPDB", "ABUSEIPDB_API_KEY"),
+        ("AlienVault OTX", "OTX_API_KEY"),
+        ("Claude AI", "ANTHROPIC_API_KEY"),
+    ]
+
+    for provider, env_name in providers:
+        configured = bool(os.getenv(env_name))
+        api_table.add_row(
+            provider,
+            "[green]SET[/green]"
+            if configured
+            else "[yellow]NOT SET[/yellow]",
+        )
+
+    console.print(api_table)
     return EXIT_OK
+
 
 
 def cmd_version(_: argparse.Namespace) -> int:
