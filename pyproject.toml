@@ -9,6 +9,36 @@ description = "AI-assisted SOC alert triage and incident analysis toolkit"
 readme = "README.md"
 requires-python = ">=3.10"
 
+authors = [
+    { name = "Maulana Yasyfa'u Al Azhiim Yudho Leksono" }
+]
+
+license = "MIT"
+
+keywords = [
+    "soc",
+    "security",
+    "cybersecurity",
+    "incident-response",
+    "threat-detection",
+    "mitre-attack",
+    "ioc",
+    "ai",
+    "cli",
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Information Technology",
+    "Topic :: Security",
+    "Topic :: System :: Monitoring",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+
 dependencies = [
     "requests>=2.31",
     "anthropic>=0.40",
@@ -16,6 +46,11 @@ dependencies = [
     "python-dateutil>=2.9",
     "rich>=15.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ByteBreakerGhost-69/soc-agent-toolkit"
+Repository = "https://github.com/ByteBreakerGhost-69/soc-agent-toolkit"
+Issues = "https://github.com/ByteBreakerGhost-69/soc-agent-toolkit/issues"
 
 [project.scripts]
 soc-agent = "soc_agent_toolkit.cli:main"
