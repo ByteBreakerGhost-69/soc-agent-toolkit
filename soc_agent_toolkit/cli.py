@@ -29,6 +29,8 @@ from .commands.version import VERSION, cmd_version
 from .commands.status import cmd_status
 from .commands.config import cmd_config
 from .commands.doctor import cmd_doctor
+from .commands.mitre import cmd_mitre
+from .commands.enrich import cmd_enrich_ip, cmd_enrich_domain, cmd_enrich_hash
 from .agent import run_pipeline
 from .logging_setup import configure_logging, get_logger
 
@@ -446,116 +448,6 @@ def cmd_triage(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return EXIT_RUNTIME_ERROR
-
-def cmd_mitre(args: argparse.Namespace) -> int:
-    """Map text to MITRE ATT&CK techniques."""
-    try:
-        results = mitre.map_technique(args.text)
-
-        if not results:
-            print("No MITRE ATT&CK technique matched.")
-            return EXIT_OK
-
-        print("MITRE ATT&CK Matches")
-        print("====================")
-
-        for item in results:
-            print(
-                f"{item['technique_id']} — "
-                f"{item['technique']}"
-            )
-            print(f"Tactic: {item['tactic']}")
-            print()
-
-        return EXIT_OK
-
-    except Exception:
-        logger.exception("MITRE mapping failed")
-
-        print(
-            "Error: MITRE ATT&CK mapping failed.",
-            file=sys.stderr,
-        )
-        return EXIT_RUNTIME_ERROR
-
-
-def cmd_enrich_ip(args: argparse.Namespace) -> int:
-    """Check IP reputation."""
-    try:
-        result = enrichment.enrich_ip(args.ip)
-
-        print(
-            json.dumps(
-                result,
-                ensure_ascii=False,
-                indent=2,
-                default=str,
-            )
-        )
-
-        return EXIT_OK
-
-    except Exception:
-        logger.exception("IP enrichment failed")
-
-        print(
-            "Error: IP enrichment failed.",
-            file=sys.stderr,
-        )
-        return EXIT_RUNTIME_ERROR
-
-
-def cmd_enrich_domain(args: argparse.Namespace) -> int:
-    """Check domain reputation."""
-    try:
-        result = enrichment.enrich_domain(args.domain)
-
-        print(
-            json.dumps(
-                result,
-                ensure_ascii=False,
-                indent=2,
-                default=str,
-            )
-        )
-
-        return EXIT_OK
-
-    except Exception:
-        logger.exception("Domain enrichment failed")
-
-        print(
-            "Error: domain enrichment failed.",
-            file=sys.stderr,
-        )
-        return EXIT_RUNTIME_ERROR
-
-def cmd_enrich_hash(args: argparse.Namespace) -> int:
-    """Check file hash reputation."""
-    try:
-        result = enrichment.enrich_hash(args.hash)
-
-        print(
-            json.dumps(
-                result,
-                ensure_ascii=False,
-                indent=2,
-                default=str,
-            )
-        )
-
-        return EXIT_OK
-
-    except Exception:
-        logger.exception("Hash enrichment failed")
-
-        print(
-            "Error: hash enrichment failed.",
-            file=sys.stderr,
-        )
-
-        return EXIT_RUNTIME_ERROR
-
 
 
 def build_parser() -> argparse.ArgumentParser:
