@@ -553,7 +553,7 @@ def cmd_enrich_hash(args: argparse.Namespace) -> int:
 
         return EXIT_RUNTIME_ERROR
 
-def cmd_status(_: argparse.Namespace) -> int:
+def cmd_status(args: argparse.Namespace) -> int:
     """Show toolkit and integration status."""
     table = Table(
         title="SOC AGENT STATUS",
@@ -640,6 +640,31 @@ def cmd_status(_: argparse.Namespace) -> int:
         if os.getenv("ANTHROPIC_API_KEY")
         else "Deterministic offline mode",
     )
+
+    if args.json:
+        result = {
+            "toolkit": {
+                "version": VERSION,
+            },
+            "runtime": {
+                "python": platform.python_version(),
+                "platform": platform.system(),
+            },
+            "configuration": {
+                "model": config.ANTHROPIC_MODEL,
+                "mitre_dataset": bool(config.MITRE_STIX_URL),
+                "enrichment_cache_ttl": config.ENRICHMENT_CACHE_TTL_SECONDS,
+            },
+            "integrations": {
+                "virustotal": bool(os.getenv("VIRUSTOTAL_API_KEY")),
+                "abuseipdb": bool(os.getenv("ABUSEIPDB_API_KEY")),
+                "otx": bool(os.getenv("OTX_API_KEY")),
+                "claude": bool(os.getenv("ANTHROPIC_API_KEY")),
+            },
+        }
+
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return EXIT_OK
 
     console.print(table)
     return EXIT_OK
@@ -1078,6 +1103,12 @@ def build_parser() -> argparse.ArgumentParser:
     status_parser = subparsers.add_parser(
         "status",
         help="Show toolkit and integration status",
+    )
+
+    status_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print status as JSON",
     )
 
     status_parser.set_defaults(func=cmd_status)

@@ -88,3 +88,20 @@ def test_doctor_json_output(monkeypatch, capsys):
     assert "failed" in data
     assert data["failed"] == 0
     assert isinstance(data["checks"], list)
+
+
+def test_status_json_output(capsys):
+    from soc_agent_toolkit import cli
+
+    parser = cli.build_parser()
+    args = parser.parse_args(["status", "--json"])
+
+    assert args.func(args) == cli.EXIT_OK
+
+    output = capsys.readouterr().out
+    data = __import__("json").loads(output)
+
+    assert data["toolkit"]["version"] == cli.VERSION
+    assert "runtime" in data
+    assert "configuration" in data
+    assert "integrations" in data
