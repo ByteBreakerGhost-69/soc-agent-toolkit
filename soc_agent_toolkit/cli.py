@@ -820,7 +820,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def cmd_config(_: argparse.Namespace) -> int:
+def cmd_config(args: argparse.Namespace) -> int:
     """Show toolkit configuration."""
     table = Table(
         title="SOC AGENT CONFIG",
@@ -890,6 +890,48 @@ def cmd_config(_: argparse.Namespace) -> int:
 
     for name, value in rows:
         table.add_row(name, value)
+
+    if args.json:
+        result = {
+            "configuration": {
+                "ai_model": config.ANTHROPIC_MODEL,
+                "vt_vote_weight": config.VT_MALICIOUS_VOTE_WEIGHT,
+                "otx_pulse_weight": config.OTX_PULSE_WEIGHT,
+                "malicious_threshold": config.VERDICT_MALICIOUS_THRESHOLD,
+                "suspicious_threshold": config.VERDICT_SUSPICIOUS_THRESHOLD,
+                "hash_malicious_vendors": config.HASH_MALICIOUS_VENDOR_COUNT,
+                "hash_suspicious_vendors": config.HASH_SUSPICIOUS_VENDOR_COUNT,
+                "severity_weight": config.SEVERITY_WEIGHT,
+                "repeat_occurrence_points": config.REPEAT_OCCURRENCE_POINTS,
+                "repeat_occurrence_cap": config.REPEAT_OCCURRENCE_CAP,
+                "enrichment_boost_multiplier": config.ENRICHMENT_BOOST_MULTIPLIER,
+                "mitre_match_bonus": config.MITRE_MATCH_BONUS,
+                "tier_p1_threshold": config.TIER_P1_THRESHOLD,
+                "tier_p2_threshold": config.TIER_P2_THRESHOLD,
+                "tier_p3_threshold": config.TIER_P3_THRESHOLD,
+                "enrichment_cache_ttl_seconds": config.ENRICHMENT_CACHE_TTL_SECONDS,
+                "dedup_time_window_minutes": config.DEDUP_TIME_WINDOW_MINUTES,
+                "dedup_fuzzy_signature_threshold": config.DEDUP_FUZZY_SIGNATURE_THRESHOLD,
+                "async_enrichment_concurrency": config.ASYNC_ENRICHMENT_CONCURRENCY,
+                "http_timeout_seconds": config.HTTP_TIMEOUT_SECONDS,
+                "log_level": os.getenv("SOC_TOOLKIT_LOG_LEVEL", "WARNING"),
+            },
+            "integrations": {
+                "virustotal": bool(os.getenv("VIRUSTOTAL_API_KEY")),
+                "abuseipdb": bool(os.getenv("ABUSEIPDB_API_KEY")),
+                "otx": bool(os.getenv("OTX_API_KEY")),
+                "claude": bool(os.getenv("ANTHROPIC_API_KEY")),
+            },
+        }
+
+        print(
+            json.dumps(
+                result,
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return EXIT_OK
 
     console.print(table)
 
@@ -1135,6 +1177,12 @@ def build_parser() -> argparse.ArgumentParser:
     config_parser = subparsers.add_parser(
         "config",
         help="Show toolkit configuration status",
+    )
+
+    config_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print configuration as JSON",
     )
 
     config_parser.set_defaults(func=cmd_config)

@@ -105,3 +105,20 @@ def test_status_json_output(capsys):
     assert "runtime" in data
     assert "configuration" in data
     assert "integrations" in data
+
+
+def test_config_json_output(capsys):
+    from soc_agent_toolkit import cli
+
+    parser = cli.build_parser()
+    args = parser.parse_args(["config", "--json"])
+
+    assert args.func(args) == cli.EXIT_OK
+
+    output = capsys.readouterr().out
+    data = __import__("json").loads(output)
+
+    assert "configuration" in data
+    assert "integrations" in data
+    assert data["configuration"]["ai_model"] == cli.config.ANTHROPIC_MODEL
+    assert "virustotal" in data["integrations"]
