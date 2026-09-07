@@ -25,6 +25,7 @@ from rich.progress import Progress, TextColumn
 from rich.table import Table
 
 from . import config, enrichment, mitre, triage
+from .commands.version import VERSION, cmd_version
 from .agent import run_pipeline
 from .logging_setup import configure_logging, get_logger
 
@@ -35,7 +36,6 @@ EXIT_OK = 0
 EXIT_INPUT_ERROR = 2
 EXIT_RUNTIME_ERROR = 3
 
-VERSION = "0.1.0"
 
 
 def _read_input(path: str) -> str:
@@ -965,12 +965,6 @@ def cmd_config(args: argparse.Namespace) -> int:
     console.print(api_table)
     return EXIT_OK
 
-
-
-def cmd_version(_: argparse.Namespace) -> int:
-    """Print the CLI version."""
-    print(f"SOC Agent Toolkit v{VERSION}")
-    return EXIT_OK
 
 
 def build_parser() -> argparse.ArgumentParser:
