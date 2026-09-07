@@ -122,3 +122,27 @@ def test_config_json_output(capsys):
     assert "integrations" in data
     assert data["configuration"]["ai_model"] == cli.config.ANTHROPIC_MODEL
     assert "virustotal" in data["integrations"]
+
+
+def test_doctor_json_fails_when_network_check_fails(monkeypatch, capsys):
+    from soc_agent_toolkit import cli
+
+    def failing_get(*args, **kwargs):
+        raise cli.requests.RequestException("simulated network failure")
+
+    monkeypatch.setattr(cli.requests, "get", failing_get)
+
+    parser = cli.build_parser()
+    args = parser.parse_args(["doctor", "--network", "--json"])
+
+    assert args.func(args) == cli.EXIT_RUNTIME_ERROR
+
+    output = capsys.readouterr().out
+    data = __import__("json").loads(output)
+
+    assert data["failed"] == 3
+    assert all(
+        check["status"] == "fail"
+        for check in data["checks"]
+        if check["name"].endswith("network")
+    )
