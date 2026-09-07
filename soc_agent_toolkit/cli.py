@@ -645,7 +645,7 @@ def cmd_status(_: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def cmd_doctor(_: argparse.Namespace) -> int:
+def cmd_doctor(args: argparse.Namespace) -> int:
     """Run basic toolkit health checks."""
     checks = []
 
@@ -690,34 +690,32 @@ def cmd_doctor(_: argparse.Namespace) -> int:
         else "STIX source missing",
     )
 
-    # Basic outbound HTTPS connectivity.
-    # No API key is sent and no reputation lookup is performed.
-    network_targets = {
-        "VirusTotal": "https://www.virustotal.com",
-        "AbuseIPDB": "https://api.abuseipdb.com",
-        "AlienVault OTX": "https://otx.alienvault.com",
-    }
+    if args.network:
+        # Basic outbound HTTPS connectivity.
+        # No API key is sent and no reputation lookup is performed.
+        network_targets = {
+            "VirusTotal": "https://www.virustotal.com",
+            "AbuseIPDB": "https://api.abuseipdb.com",
+            "AlienVault OTX": "https://otx.alienvault.com",
+        }
 
-    reachable = 0
-
-    for provider, url in network_targets.items():
-        try:
-            response = requests.get(
-                url,
-                timeout=config.HTTP_TIMEOUT_SECONDS,
-            )
-            add_check(
-                f"{provider} network",
-                True,
-                f"HTTPS reachable (HTTP {response.status_code})",
-            )
-            reachable += 1
-        except Exception as exc:
-            add_check(
-                f"{provider} network",
-                False,
-                f"unreachable ({type(exc).__name__})",
-            )
+        for provider, url in network_targets.items():
+            try:
+                response = requests.get(
+                    url,
+                    timeout=config.HTTP_TIMEOUT_SECONDS,
+                )
+                add_check(
+                    f"{provider} network",
+                    True,
+                    f"HTTPS reachable (HTTP {response.status_code})",
+                )
+            except Exception as exc:
+                add_check(
+                    f"{provider} network",
+                    False,
+                    f"unreachable ({type(exc).__name__})",
+                )
 
     # Enrichment providers
     providers = [
@@ -1060,6 +1058,12 @@ def build_parser() -> argparse.ArgumentParser:
     doctor_parser = subparsers.add_parser(
         "doctor",
         help="Run toolkit health checks",
+    )
+
+    doctor_parser.add_argument(
+        "--network",
+        action="store_true",
+        help="Also check outbound HTTPS connectivity",
     )
 
     doctor_parser.set_defaults(func=cmd_doctor)
