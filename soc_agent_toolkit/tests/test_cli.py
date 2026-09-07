@@ -63,3 +63,28 @@ def test_doctor_command_is_registered_and_runs(monkeypatch, capsys):
     output = capsys.readouterr().out
     assert "SOC AGENT DOCTOR" in output
     assert "All diagnostic checks passed." in output
+
+
+def test_doctor_json_output(monkeypatch, capsys):
+    from soc_agent_toolkit import cli
+
+    class FakeResponse:
+        status_code = 200
+
+    def fake_get(*args, **kwargs):
+        return FakeResponse()
+
+    monkeypatch.setattr(cli.requests, "get", fake_get)
+
+    parser = cli.build_parser()
+    args = parser.parse_args(["doctor", "--json"])
+
+    assert args.func(args) == cli.EXIT_OK
+
+    output = capsys.readouterr().out
+    data = __import__("json").loads(output)
+
+    assert "checks" in data
+    assert "failed" in data
+    assert data["failed"] == 0
+    assert isinstance(data["checks"], list)

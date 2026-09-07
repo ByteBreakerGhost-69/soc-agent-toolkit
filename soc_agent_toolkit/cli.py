@@ -735,6 +735,33 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         f"{configured_count}/{len(providers)} providers configured",
     )
 
+    if args.json:
+        result = {
+            "checks": [
+                {
+                    "name": name,
+                    "status": "pass" if ok else "fail",
+                    "details": details,
+                }
+                for name, ok, details in checks
+            ],
+            "failed": sum(1 for _, ok, _ in checks if not ok),
+        }
+
+        print(
+            json.dumps(
+                result,
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+
+        return (
+            EXIT_RUNTIME_ERROR
+            if result["failed"]
+            else EXIT_OK
+        )
+
     table = Table(
         title="SOC AGENT DOCTOR",
         box=box.ROUNDED,
@@ -1064,6 +1091,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--network",
         action="store_true",
         help="Also check outbound HTTPS connectivity",
+    )
+
+    doctor_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print diagnostic results as JSON",
     )
 
     doctor_parser.set_defaults(func=cmd_doctor)
