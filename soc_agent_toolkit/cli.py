@@ -26,6 +26,7 @@ from rich.table import Table
 
 from . import config, enrichment, mitre, triage
 from .commands.version import VERSION, cmd_version
+from .commands.status import cmd_status
 from .agent import run_pipeline
 from .logging_setup import configure_logging, get_logger
 
@@ -552,122 +553,6 @@ def cmd_enrich_hash(args: argparse.Namespace) -> int:
         )
 
         return EXIT_RUNTIME_ERROR
-
-def cmd_status(args: argparse.Namespace) -> int:
-    """Show toolkit and integration status."""
-    table = Table(
-        title="SOC AGENT STATUS",
-        box=box.ROUNDED,
-        expand=True,
-    )
-
-    table.add_column("Component", style="bold")
-    table.add_column("Status")
-    table.add_column("Details")
-
-    table.add_row(
-        "Toolkit",
-        "[green]READY[/green]",
-        f"v{VERSION}",
-    )
-
-    table.add_row(
-        "Python",
-        "[green]READY[/green]",
-        platform.python_version(),
-    )
-
-    table.add_row(
-        "Platform",
-        "[green]READY[/green]",
-        platform.system(),
-    )
-
-    table.add_row(
-        "AI Model",
-        "[green]CONFIGURED[/green]",
-        config.ANTHROPIC_MODEL,
-    )
-
-    table.add_row(
-        "MITRE Dataset",
-        "[green]CONFIGURED[/green]",
-        "Remote STIX source",
-    )
-
-    table.add_row(
-        "Enrichment Cache",
-        "[green]READY[/green]",
-        f"TTL {config.ENRICHMENT_CACHE_TTL_SECONDS}s",
-    )
-
-    table.add_row(
-        "VirusTotal",
-        "[green]CONFIGURED[/green]"
-        if os.getenv("VIRUSTOTAL_API_KEY")
-        else "[yellow]NOT CONFIGURED[/yellow]",
-        "API key detected"
-        if os.getenv("VIRUSTOTAL_API_KEY")
-        else "Set VIRUSTOTAL_API_KEY to enable",
-    )
-
-    table.add_row(
-        "AbuseIPDB",
-        "[green]CONFIGURED[/green]"
-        if os.getenv("ABUSEIPDB_API_KEY")
-        else "[yellow]NOT CONFIGURED[/yellow]",
-        "API key detected"
-        if os.getenv("ABUSEIPDB_API_KEY")
-        else "Set ABUSEIPDB_API_KEY to enable",
-    )
-
-    table.add_row(
-        "AlienVault OTX",
-        "[green]CONFIGURED[/green]"
-        if os.getenv("OTX_API_KEY")
-        else "[yellow]NOT CONFIGURED[/yellow]",
-        "API key detected"
-        if os.getenv("OTX_API_KEY")
-        else "Set OTX_API_KEY to enable",
-    )
-
-    table.add_row(
-        "Claude AI",
-        "[green]CONFIGURED[/green]"
-        if os.getenv("ANTHROPIC_API_KEY")
-        else "[yellow]OFFLINE FALLBACK[/yellow]",
-        "API key detected"
-        if os.getenv("ANTHROPIC_API_KEY")
-        else "Deterministic offline mode",
-    )
-
-    if args.json:
-        result = {
-            "toolkit": {
-                "version": VERSION,
-            },
-            "runtime": {
-                "python": platform.python_version(),
-                "platform": platform.system(),
-            },
-            "configuration": {
-                "model": config.ANTHROPIC_MODEL,
-                "mitre_dataset": bool(config.MITRE_STIX_URL),
-                "enrichment_cache_ttl": config.ENRICHMENT_CACHE_TTL_SECONDS,
-            },
-            "integrations": {
-                "virustotal": bool(os.getenv("VIRUSTOTAL_API_KEY")),
-                "abuseipdb": bool(os.getenv("ABUSEIPDB_API_KEY")),
-                "otx": bool(os.getenv("OTX_API_KEY")),
-                "claude": bool(os.getenv("ANTHROPIC_API_KEY")),
-            },
-        }
-
-        print(json.dumps(result, ensure_ascii=False, indent=2))
-        return EXIT_OK
-
-    console.print(table)
-    return EXIT_OK
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
