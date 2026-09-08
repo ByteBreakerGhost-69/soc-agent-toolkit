@@ -183,3 +183,77 @@ def test_enrichment_preserves_provider_provenance(monkeypatch):
 
     assert "virustotal" in ip_result
     assert ip_result["virustotal"]["malicious"] == 8
+
+def test_async_enrichment_handles_ip_domain_and_hash(monkeypatch):
+    import asyncio
+    from soc_agent_toolkit import enrichment_async
+
+    calls = []
+
+    async def fake_ip(client, value, sem):
+        calls.append(("ip", value))
+        return {
+            "ioc": value,
+            "type": "ip",
+            "providers_used": ["virustotal"],
+            "verdict": "malicious",
+            "score": 90,
+        }
+
+    async def fake_domain(client, value, sem):
+        calls.append(("domain", value))
+        return {
+            "ioc": value,
+            "type": "domain",
+            "providers_used": ["virustotal"],
+            "verdict": "malicious",
+            "score": 85,
+        }
+
+    async def fake_hash(client, value, sem):
+        calls.append(("hash", value))
+        return {
+            "ioc": value,
+            "type": "hash:sha256",
+            "providers_used": ["virustotal"],
+            "verdict": "malicious",
+            "score": 95,
+        }
+
+    monkeypatch.setattr(enrichment_async, "enrich_ip_async", fake_ip)
+    monkeypatch.setattr(enrichment_async, "enrich_domain_async", fake_domain)
+    monkeypatch.setattr(enrichment_async, "enrich_hash_async", fake_hash)
+
+    file_hash = (
+        "0123456789abcdef0123456789abcdef"
+        "0123456789abcdef0123456789abcdef"
+    )
+
+    alerts = [
+        {
+            "id": "async-001",
+            "src_ip": "203.0.113.10",
+            "dest_ip": None,
+            "message": (
+                "Connection to evil-example.com "
+                f"with SHA256 {file_hash}"
+            ),
+            "raw": "",
+        }
+    ]
+
+    result = asyncio.run(
+        enrichment_async.enrich_alerts_batch_async(alerts)
+    )
+
+    enrichment = result[0]["enrichment"]
+
+    assert "src_ip" in enrichment
+    assert "domains" in enrichment
+    assert "evil-example.com" in enrichment["domains"]
+    assert "hashes" in enrichment
+    assert file_hash in enrichment["hashes"]
+
+    assert ("ip", "203.0.113.10") in calls
+    assert ("domain", "evil-example.com") in calls
+    assert ("hash", file_hash) in calls
