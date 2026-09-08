@@ -150,6 +150,21 @@ def dedup_alerts(
     return deduped
 
 
+def _iter_enrichment_results(value: object):
+    """Yield normalized enrichment result dictionaries from nested structures."""
+    if isinstance(value, dict):
+        if "verdict" in value:
+            yield value
+            return
+
+        for nested in value.values():
+            yield from _iter_enrichment_results(nested)
+
+    elif isinstance(value, list):
+        for nested in value:
+            yield from _iter_enrichment_results(nested)
+
+
 def score_alert(alert: dict, asset_criticality: dict[str, int] | None = None) -> int:
     """Compute a 0-100 priority score for a single (deduped) alert. See config.py
     for the rationale behind each weight used here."""
@@ -161,9 +176,12 @@ def score_alert(alert: dict, asset_criticality: dict[str, int] | None = None) ->
         score += min(config.REPEAT_OCCURRENCE_CAP, (occurrences - 1) * config.REPEAT_OCCURRENCE_POINTS)
 
     enrichment = alert.get("enrichment", {})
-    for field_data in enrichment.values():
+    for field_data in _iter_enrichment_results(enrichment):
         verdict = field_data.get("verdict", "unknown")
-        score += VERDICT_BOOST.get(verdict, 0) * config.ENRICHMENT_BOOST_MULTIPLIER
+        score += (
+            VERDICT_BOOST.get(verdict, 0)
+            * config.ENRICHMENT_BOOST_MULTIPLIER
+        )
 
     if alert.get("mitre"):
         score += config.MITRE_MATCH_BONUS

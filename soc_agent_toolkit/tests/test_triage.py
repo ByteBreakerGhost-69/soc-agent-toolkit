@@ -90,3 +90,42 @@ class TestScoreAlert:
             "mitre": [{"technique_id": "T1110"}], "src_ip": "1.1.1.1",
         }
         assert triage.score_alert(alert, asset_criticality={"1.1.1.1": 50}) == 100
+
+
+def test_score_alert_counts_nested_threat_intelligence():
+    from soc_agent_toolkit import triage
+
+    base = {
+        "severity": 5,
+        "occurrence_count": 1,
+        "mitre": [],
+        "src_ip": None,
+        "dest_ip": None,
+        "enrichment": {},
+    }
+
+    clean_score = triage.score_alert(base)
+
+    malicious_ti = dict(base)
+    malicious_ti["enrichment"] = {
+        "domains": {
+            "evil-example.com": {
+                "ioc": "evil-example.com",
+                "verdict": "malicious",
+            }
+        },
+        "hashes": {
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef": {
+                "ioc": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                "verdict": "malicious",
+            }
+        },
+    }
+
+    malicious_score = triage.score_alert(malicious_ti)
+
+    assert malicious_score > clean_score
+    assert malicious_score == (
+        clean_score
+        + (4 * triage.config.ENRICHMENT_BOOST_MULTIPLIER * 2)
+    )
