@@ -70,3 +70,67 @@ def test_enrich_alert_orchestrates_ip_domain_and_hash(monkeypatch):
     assert ("domain", "evil-example.com") in calls
     assert ("hash", file_hash) in calls
     assert "ioc_extraction" in result
+
+def test_enrichment_to_triage_produces_confidence_and_priority(monkeypatch):
+    from soc_agent_toolkit import enrichment, triage
+
+    file_hash = (
+        "0123456789abcdef0123456789abcdef"
+        "0123456789abcdef0123456789abcdef"
+    )
+
+    def fake_ip(value):
+        return {
+            "ioc": value,
+            "verdict": "malicious",
+            "score": 90,
+        }
+
+    def fake_domain(value):
+        return {
+            "ioc": value,
+            "verdict": "malicious",
+            "score": 85,
+        }
+
+    def fake_hash(value):
+        return {
+            "ioc": value,
+            "verdict": "malicious",
+            "score": 95,
+        }
+
+    monkeypatch.setattr(enrichment, "enrich_ip", fake_ip)
+    monkeypatch.setattr(enrichment, "enrich_domain", fake_domain)
+    monkeypatch.setattr(enrichment, "enrich_hash", fake_hash)
+
+    alert = {
+        "id": "alert-001",
+        "timestamp": "2025-01-01T10:00:00Z",
+        "source": "test-siem",
+        "signature": "Malicious Activity Detected",
+        "severity": 8,
+        "src_ip": "203.0.113.10",
+        "dest_ip": None,
+        "message": (
+            "Connection to evil-example.com "
+            f"with SHA256 {file_hash}"
+        ),
+        "raw": "",
+    }
+
+    enriched = enrichment.enrich_alert(alert)
+
+    result = triage.triage_alerts(
+        [enriched],
+        dedup=False,
+    )[0]
+
+    assert result["enrichment_confidence"]["provider_count"] == 3
+    assert result["enrichment_confidence"]["malicious_count"] == 3
+    assert result["enrichment_confidence"]["suspicious_count"] == 0
+    assert result["enrichment_confidence"]["consensus"] == "strong"
+    assert result["enrichment_confidence"]["confidence"] == 1.0
+
+    assert result["priority_score"] > 8 * triage.config.SEVERITY_WEIGHT
+    assert result["priority_tier"] in {"P1", "P2", "P3"}
