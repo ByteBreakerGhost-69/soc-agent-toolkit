@@ -252,8 +252,12 @@ def triage_alerts(
     dedup: bool = True,
 ) -> list[dict[str, Any]]:
     """
-    Full triage pass: dedup (optional) -> score -> sort descending by score.
-    Adds `priority_score` and `priority_tier` ("P1".."P4") to each alert.
+    Full triage pass: dedup (optional) -> score -> confidence -> sort.
+
+    Adds:
+        `priority_score`
+        `priority_tier`
+        `enrichment_confidence`
     """
     working = dedup_alerts(alerts) if dedup else [dict(a) for a in alerts]
 
@@ -265,6 +269,10 @@ def triage_alerts(
             else "P2" if s >= config.TIER_P2_THRESHOLD
             else "P3" if s >= config.TIER_P3_THRESHOLD
             else "P4"
+        )
+
+        a["enrichment_confidence"] = enrichment_confidence(
+            a.get("enrichment", {})
         )
 
     working.sort(key=lambda a: a["priority_score"], reverse=True)
