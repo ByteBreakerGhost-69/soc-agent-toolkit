@@ -340,12 +340,57 @@ def enrich_hash(file_hash: str) -> dict[str, Any]:
 
 
 def enrich_alert(alert: dict) -> dict:
-    """Enrich a normalized alert's src_ip/dest_ip fields in place (returns a copy)."""
+    """Enrich all supported IOC types found in a normalized alert.
+
+    Existing src_ip/dest_ip enrichment is preserved. Additional IPs, domains,
+    and file hashes discovered in the alert's message/raw content are added
+    without changing the normalized alert schema.
+    """
     alert = dict(alert)
-    enrichments = {}
+
+    text_parts = [
+        str(alert.get("message") or ""),
+        str(alert.get("raw") or ""),
+    ]
+    iocs = extract_iocs("\n".join(text_parts))
+
+    enrichments: dict[str, Any] = {}
+
+    # Preserve the explicit source/destination IP structure.
+    enriched_ips: set[str] = set()
+
     for field_name in ("src_ip", "dest_ip"):
         ip = alert.get(field_name)
         if ip:
             enrichments[field_name] = enrich_ip(ip)
+            enriched_ips.add(ip)
+
+    # Enrich additional IPs discovered in message/raw content.
+    other_ips = {}
+    for ip in iocs["ips"]:
+        if ip not in enriched_ips:
+            other_ips[ip] = enrich_ip(ip)
+
+    if other_ips:
+        enrichments["ips"] = other_ips
+
+    # Domain enrichment.
+    domain_results = {}
+    for domain in iocs["domains"]:
+        domain_results[domain] = enrich_domain(domain)
+
+    if domain_results:
+        enrichments["domains"] = domain_results
+
+    # Hash enrichment.
+    hash_results = {}
+    for file_hash in iocs["hashes"]:
+        hash_results[file_hash] = enrich_hash(file_hash)
+
+    if hash_results:
+        enrichments["hashes"] = hash_results
+
     alert["enrichment"] = enrichments
+    alert["ioc_extraction"] = iocs
+
     return alert
