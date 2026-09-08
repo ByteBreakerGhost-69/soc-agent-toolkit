@@ -129,3 +129,49 @@ def test_score_alert_counts_nested_threat_intelligence():
         clean_score
         + (4 * triage.config.ENRICHMENT_BOOST_MULTIPLIER * 2)
     )
+
+
+def test_enrichment_confidence_strong_consensus():
+    from soc_agent_toolkit import triage
+
+    enrichment = {
+        "src_ip": {
+            "verdict": "malicious",
+            "score": 90,
+            "abuseipdb": {"abuse_confidence_score": 95},
+        },
+        "domains": {
+            "evil-example.com": {
+                "verdict": "malicious",
+                "score": 80,
+                "virustotal": {"malicious": 4},
+            }
+        },
+        "hashes": {
+            "abc": {
+                "verdict": "suspicious",
+                "score": 25,
+                "virustotal": {"stats": {"malicious": 1}},
+            }
+        },
+    }
+
+    result = triage.enrichment_confidence(enrichment)
+
+    assert result["provider_count"] == 3
+    assert result["malicious_count"] == 2
+    assert result["suspicious_count"] == 1
+    assert result["consensus"] == "strong"
+    assert 0 <= result["confidence"] <= 1
+
+
+def test_enrichment_confidence_unknown_when_no_results():
+    from soc_agent_toolkit import triage
+
+    result = triage.enrichment_confidence({})
+
+    assert result["provider_count"] == 0
+    assert result["malicious_count"] == 0
+    assert result["suspicious_count"] == 0
+    assert result["consensus"] == "unknown"
+    assert result["confidence"] == 0.0

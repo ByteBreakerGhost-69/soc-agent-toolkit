@@ -164,6 +164,58 @@ def _iter_enrichment_results(value: object):
         for nested in value:
             yield from _iter_enrichment_results(nested)
 
+def enrichment_confidence(enrichment: dict) -> dict:
+    """
+    Estimate confidence from normalized threat-intelligence verdicts.
+
+    Returns:
+        provider_count: Number of normalized enrichment results found.
+        malicious_count: Number of malicious results.
+        suspicious_count: Number of suspicious results.
+        consensus: Overall consensus strength.
+        confidence: Confidence score from 0.0 to 1.0.
+    """
+    results = list(_iter_enrichment_results(enrichment))
+
+    provider_count = len(results)
+    malicious_count = sum(
+        1 for result in results
+        if result.get("verdict") == "malicious"
+    )
+    suspicious_count = sum(
+        1 for result in results
+        if result.get("verdict") == "suspicious"
+    )
+
+    if provider_count == 0:
+        return {
+            "provider_count": 0,
+            "malicious_count": 0,
+            "suspicious_count": 0,
+            "consensus": "unknown",
+            "confidence": 0.0,
+        }
+
+    positive_count = malicious_count + suspicious_count
+    confidence = positive_count / provider_count
+
+    if malicious_count == provider_count:
+        consensus = "strong"
+    elif malicious_count >= 2 and malicious_count > suspicious_count:
+        consensus = "strong"
+    elif malicious_count > 0 or suspicious_count > 0:
+        consensus = "mixed"
+    else:
+        consensus = "weak"
+
+    return {
+        "provider_count": provider_count,
+        "malicious_count": malicious_count,
+        "suspicious_count": suspicious_count,
+        "consensus": consensus,
+        "confidence": round(confidence, 3),
+    }
+
 
 def score_alert(alert: dict, asset_criticality: dict[str, int] | None = None) -> int:
     """Compute a 0-100 priority score for a single (deduped) alert. See config.py
