@@ -160,7 +160,7 @@ def test_enrichment_confidence_strong_consensus():
 
     result = triage.enrichment_confidence(enrichment)
 
-    assert result["provider_count"] == 3
+    assert result["result_count"] == 3
     assert result["malicious_count"] == 2
     assert result["suspicious_count"] == 1
     assert result["consensus"] == "strong"
@@ -172,7 +172,7 @@ def test_enrichment_confidence_unknown_when_no_results():
 
     result = triage.enrichment_confidence({})
 
-    assert result["provider_count"] == 0
+    assert result["result_count"] == 0
     assert result["malicious_count"] == 0
     assert result["suspicious_count"] == 0
     assert result["consensus"] == "unknown"
@@ -205,3 +205,29 @@ def test_score_alert_uses_enrichment_confidence_bonus():
     score = triage.score_alert(alert)
 
     assert score > verdict_only_score
+
+def test_enrichment_confidence_unknown_when_results_have_no_verdict():
+    from soc_agent_toolkit import triage
+
+    enrichment = {
+        "src_ip": {
+            "ioc": "203.0.113.10",
+            "verdict": "unknown",
+            "providers_used": [],
+        },
+        "dest_ip": {
+            "ioc": "10.0.0.12",
+            "verdict": "private/internal",
+            "providers_used": [],
+        },
+    }
+
+    result = triage.enrichment_confidence(enrichment)
+
+    assert result["result_count"] == 2
+    assert result["provider_count"] == 0
+    assert result["providers"] == []
+    assert result["malicious_count"] == 0
+    assert result["suspicious_count"] == 0
+    assert result["consensus"] == "unknown"
+    assert result["confidence"] == 0.0

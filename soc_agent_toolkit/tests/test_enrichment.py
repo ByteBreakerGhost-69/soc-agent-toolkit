@@ -132,7 +132,7 @@ def test_enrichment_to_triage_produces_confidence_and_priority(monkeypatch):
         dedup=False,
     )[0]
 
-    assert result["enrichment_confidence"]["provider_count"] == 3
+    assert result["enrichment_confidence"]["result_count"] == 3
     assert result["enrichment_confidence"]["malicious_count"] == 3
     assert result["enrichment_confidence"]["suspicious_count"] == 0
     assert result["enrichment_confidence"]["consensus"] == "strong"

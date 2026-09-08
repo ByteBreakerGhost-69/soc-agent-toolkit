@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 from argparse import Namespace
@@ -52,6 +53,13 @@ def cmd_triage(
 
         if args.assets:
             asset_criticality = read_asset_criticality(args.assets)
+
+        if getattr(args, "use_async", False):
+            from ..enrichment_async import enrich_alerts_batch_async
+
+            data = asyncio.run(
+                enrich_alerts_batch_async(data)
+            )
 
         triaged = triage.triage_alerts(
             data,

@@ -256,7 +256,7 @@ def enrichment_confidence(enrichment: dict) -> dict:
     Estimate confidence from normalized threat-intelligence verdicts.
 
     Returns:
-        provider_count: Number of normalized enrichment results found.
+        result_count: Number of normalized enrichment results found.
         malicious_count: Number of malicious results.
         suspicious_count: Number of suspicious results.
         consensus: Overall consensus strength.
@@ -264,7 +264,17 @@ def enrichment_confidence(enrichment: dict) -> dict:
     """
     results = list(_iter_enrichment_results(enrichment))
 
-    provider_count = len(results)
+    result_count = len(results)
+
+    providers = sorted(
+        {
+            provider
+            for result in results
+            for provider in result.get("providers_used", [])
+        }
+    )
+
+    provider_count = len(providers)
 
     malicious_count = sum(
         1
@@ -278,9 +288,11 @@ def enrichment_confidence(enrichment: dict) -> dict:
         if result.get("verdict") == "suspicious"
     )
 
-    if provider_count == 0:
+    if result_count == 0:
         return {
+            "result_count": 0,
             "provider_count": 0,
+            "providers": [],
             "malicious_count": 0,
             "suspicious_count": 0,
             "consensus": "unknown",
@@ -288,25 +300,26 @@ def enrichment_confidence(enrichment: dict) -> dict:
         }
 
     positive_count = malicious_count + suspicious_count
-    confidence = positive_count / provider_count
+    confidence = positive_count / result_count
 
-    if malicious_count == provider_count:
+    if malicious_count == 0 and suspicious_count == 0:
+        consensus = "unknown"
+    elif malicious_count == result_count:
         consensus = "strong"
     elif malicious_count >= 2 and malicious_count > suspicious_count:
         consensus = "strong"
-    elif malicious_count > 0 or suspicious_count > 0:
-        consensus = "mixed"
     else:
-        consensus = "weak"
+        consensus = "mixed"
 
     return {
+        "result_count": result_count,
         "provider_count": provider_count,
+        "providers": providers,
         "malicious_count": malicious_count,
         "suspicious_count": suspicious_count,
         "consensus": consensus,
         "confidence": round(confidence, 3),
     }
-
 
 def score_alert(
     alert: dict,
@@ -407,10 +420,6 @@ def triage_alerts(
 
         confidence = a["enrichment_confidence"]
 
-        providers = []
-        for result in _iter_enrichment_results(a.get("enrichment", {})):
-            providers.extend(result.get("providers_used", []))
-
         a["threat_intelligence"] = {
             "verdict": (
                 "malicious"
@@ -421,7 +430,9 @@ def triage_alerts(
             ),
             "confidence": confidence["confidence"],
             "consensus": confidence["consensus"],
-            "providers": sorted(set(providers)),
+            "result_count": confidence["result_count"],
+            "provider_count": confidence["provider_count"],
+            "providers": confidence["providers"],
         }
 
     working.sort(

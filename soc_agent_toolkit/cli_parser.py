@@ -92,6 +92,13 @@ def build_parser(
     )
 
     triage_parser.add_argument(
+        "--async",
+        dest="use_async",
+        action="store_true",
+        help="Enrich alerts concurrently before triage",
+    )
+
+    triage_parser.add_argument(
         "--log-level",
         default=None,
         help="DEBUG, INFO, WARNING, ERROR",
