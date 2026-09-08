@@ -125,11 +125,13 @@ def test_score_alert_counts_nested_threat_intelligence():
     malicious_score = triage.score_alert(malicious_ti)
 
     assert malicious_score > clean_score
-    assert malicious_score == (
+    expected_score = (
         clean_score
         + (4 * triage.config.ENRICHMENT_BOOST_MULTIPLIER * 2)
+        + triage.CONFIDENCE_BONUS["strong"]
     )
 
+    assert malicious_score == expected_score
 
 def test_enrichment_confidence_strong_consensus():
     from soc_agent_toolkit import triage
@@ -175,3 +177,31 @@ def test_enrichment_confidence_unknown_when_no_results():
     assert result["suspicious_count"] == 0
     assert result["consensus"] == "unknown"
     assert result["confidence"] == 0.0
+
+def test_score_alert_uses_enrichment_confidence_bonus():
+    from soc_agent_toolkit import triage
+
+    alert = {
+        "severity": 5,
+        "enrichment": {
+            "src_ip": {
+                "verdict": "malicious",
+                "score": 90,
+            },
+            "domains": {
+                "evil-example.com": {
+                    "verdict": "malicious",
+                    "score": 80,
+                },
+            },
+        },
+    }
+
+    verdict_only_score = (
+        5 * triage.config.SEVERITY_WEIGHT
+        + (4 * triage.config.ENRICHMENT_BOOST_MULTIPLIER * 2)
+    )
+
+    score = triage.score_alert(alert)
+
+    assert score > verdict_only_score
