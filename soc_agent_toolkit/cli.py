@@ -31,6 +31,7 @@ from .commands.config import cmd_config
 from .commands.doctor import cmd_doctor
 from .commands.mitre import cmd_mitre
 from .commands.enrich import cmd_enrich_ip, cmd_enrich_domain, cmd_enrich_hash
+from .commands.triage import make_cmd_triage
 from .agent import run_pipeline
 from .logging_setup import configure_logging, get_logger
 
@@ -346,108 +347,11 @@ def cmd_analyze(args: argparse.Namespace) -> int:
 
     return EXIT_OK
 
-def cmd_triage(args: argparse.Namespace) -> int:
-    """Run alert deduplication and priority scoring."""
-    configure_logging(args.log_level or "WARNING")
 
-    try:
-        raw_input = _read_input(args.input)
-
-        if not raw_input.strip():
-            print(
-                f"Error: {args.input} is empty — nothing to triage.",
-                file=sys.stderr,
-            )
-            return EXIT_INPUT_ERROR
-
-        data = json.loads(raw_input)
-
-        if not isinstance(data, list):
-            print(
-                "Error: triage input must be a JSON array of alerts.",
-                file=sys.stderr,
-            )
-            return EXIT_INPUT_ERROR
-
-        asset_criticality = None
-
-        if args.assets:
-            asset_criticality = _read_asset_criticality(args.assets)
-
-        triaged = triage.triage_alerts(
-            data,
-            asset_criticality=asset_criticality,
-        )
-
-        if args.json:
-            print(
-                json.dumps(
-                    triaged,
-                    ensure_ascii=False,
-                    indent=2,
-                    default=str,
-                )
-            )
-            return EXIT_OK
-
-        table = Table(
-            title="SOC TRIAGE RESULTS",
-            box=box.ROUNDED,
-            expand=True,
-        )
-
-        table.add_column("Priority", style="bold")
-        table.add_column("Score", justify="right")
-        table.add_column("Signature")
-        table.add_column("Source")
-        table.add_column("Target")
-
-        for alert in triaged:
-            table.add_row(
-                str(alert.get("priority_tier", "P4")),
-                str(alert.get("priority_score", 0)),
-                str(alert.get("signature", "Unknown")),
-                str(alert.get("src_ip", "Unknown")),
-                str(alert.get("dest_ip", "Unknown")),
-            )
-
-        console.print(table)
-
-        console.print(
-            f"[dim]{len(triaged)} alerts triaged and sorted by priority[/dim]"
-        )
-
-        return EXIT_OK
-
-    except FileNotFoundError:
-        print(
-            f"Error: input file not found: {args.input}",
-            file=sys.stderr,
-        )
-        return EXIT_INPUT_ERROR
-
-    except PermissionError:
-        print(
-            f"Error: permission denied reading: {args.input}",
-            file=sys.stderr,
-        )
-        return EXIT_INPUT_ERROR
-
-    except json.JSONDecodeError as exc:
-        print(
-            f"Error: {args.input} is not valid JSON ({exc})",
-            file=sys.stderr,
-        )
-        return EXIT_INPUT_ERROR
-
-    except Exception:
-        logger.exception("Triage failed")
-
-        print(
-            "Error: triage failed unexpectedly.",
-            file=sys.stderr,
-        )
-        return EXIT_RUNTIME_ERROR
+cmd_triage = make_cmd_triage(
+    read_input=_read_input,
+    read_asset_criticality=_read_asset_criticality,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
