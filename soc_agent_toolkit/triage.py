@@ -405,6 +405,25 @@ def triage_alerts(
             a.get("enrichment", {})
         )
 
+        confidence = a["enrichment_confidence"]
+
+        providers = []
+        for result in _iter_enrichment_results(a.get("enrichment", {})):
+            providers.extend(result.get("providers_used", []))
+
+        a["threat_intelligence"] = {
+            "verdict": (
+                "malicious"
+                if confidence["malicious_count"] > 0
+                else "suspicious"
+                if confidence["suspicious_count"] > 0
+                else "unknown"
+            ),
+            "confidence": confidence["confidence"],
+            "consensus": confidence["consensus"],
+            "providers": sorted(set(providers)),
+        }
+
     working.sort(
         key=lambda a: a["priority_score"],
         reverse=True,
