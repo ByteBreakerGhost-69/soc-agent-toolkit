@@ -82,6 +82,8 @@ def test_enrichment_to_triage_produces_confidence_and_priority(monkeypatch):
     def fake_ip(value):
         return {
             "ioc": value,
+            "type": "ip",
+            "providers_used": ["abuseipdb", "virustotal"],
             "verdict": "malicious",
             "score": 90,
         }
@@ -89,6 +91,8 @@ def test_enrichment_to_triage_produces_confidence_and_priority(monkeypatch):
     def fake_domain(value):
         return {
             "ioc": value,
+            "type": "domain",
+            "providers_used": ["virustotal", "otx"],
             "verdict": "malicious",
             "score": 85,
         }
@@ -96,6 +100,8 @@ def test_enrichment_to_triage_produces_confidence_and_priority(monkeypatch):
     def fake_hash(value):
         return {
             "ioc": value,
+            "type": "hash:sha256",
+            "providers_used": ["virustotal"],
             "verdict": "malicious",
             "score": 95,
         }
