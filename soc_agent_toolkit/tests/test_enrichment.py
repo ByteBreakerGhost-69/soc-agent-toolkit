@@ -134,3 +134,46 @@ def test_enrichment_to_triage_produces_confidence_and_priority(monkeypatch):
 
     assert result["priority_score"] > 8 * triage.config.SEVERITY_WEIGHT
     assert result["priority_tier"] in {"P1", "P2", "P3"}
+
+def test_enrichment_preserves_provider_provenance(monkeypatch):
+    from soc_agent_toolkit import enrichment
+
+    def fake_ip(value):
+        return {
+            "ioc": value,
+            "type": "ip",
+            "providers_used": ["abuseipdb", "virustotal"],
+            "verdict": "malicious",
+            "score": 90,
+            "abuseipdb": {
+                "abuse_confidence_score": 95,
+                "total_reports": 12,
+            },
+            "virustotal": {
+                "malicious": 8,
+                "suspicious": 1,
+            },
+        }
+
+    monkeypatch.setattr(enrichment, "enrich_ip", fake_ip)
+
+    alert = {
+        "message": "Connection from 203.0.113.10",
+        "raw": "",
+        "src_ip": "203.0.113.10",
+        "dest_ip": None,
+    }
+
+    result = enrichment.enrich_alert(alert)
+    ip_result = result["enrichment"]["src_ip"]
+
+    assert ip_result["ioc"] == "203.0.113.10"
+    assert ip_result["type"] == "ip"
+    assert ip_result["providers_used"] == ["abuseipdb", "virustotal"]
+    assert ip_result["verdict"] == "malicious"
+
+    assert "abuseipdb" in ip_result
+    assert ip_result["abuseipdb"]["abuse_confidence_score"] == 95
+
+    assert "virustotal" in ip_result
+    assert ip_result["virustotal"]["malicious"] == 8
