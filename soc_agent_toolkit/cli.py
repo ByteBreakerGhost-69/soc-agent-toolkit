@@ -32,6 +32,7 @@ from .commands.doctor import cmd_doctor
 from .commands.mitre import cmd_mitre
 from .commands.enrich import cmd_enrich_ip, cmd_enrich_domain, cmd_enrich_hash
 from .commands.triage import make_cmd_triage
+from .commands.analyze_render import render_analysis_result
 from .agent import run_pipeline
 from .logging_setup import configure_logging, get_logger
 
@@ -218,134 +219,8 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         )
         return EXIT_OK
 
-    alerts = result.get("alerts", [])
+    return render_analysis_result(result)
 
-    p1 = sum(
-        1
-        for alert in alerts
-        if alert.get("priority_tier") == "P1"
-    )
-
-    p2 = sum(
-        1
-        for alert in alerts
-        if alert.get("priority_tier") == "P2"
-    )
-
-    p3 = sum(
-        1
-        for alert in alerts
-        if alert.get("priority_tier") == "P3"
-    )
-
-    p4 = sum(
-        1
-        for alert in alerts
-        if alert.get("priority_tier") == "P4"
-    )
-
-    status = Table(
-        box=box.SIMPLE,
-        expand=True,
-    )
-
-    status.add_column("Metric", style="bold")
-    status.add_column("Value")
-
-    status.add_row("Alerts analyzed", str(len(alerts)))
-    status.add_row("P1 Critical", str(p1))
-    status.add_row("P2 High", str(p2))
-    status.add_row("P3 Medium", str(p3))
-    status.add_row("P4 Low", str(p4))
-
-    console.print(
-        Panel(
-            status,
-            title="ANALYSIS COMPLETE",
-            border_style="cyan",
-            box=box.ROUNDED,
-        )
-    )
-
-    if alerts:
-        top = alerts[0]
-
-        incident = Table(
-            box=box.SIMPLE,
-            expand=True,
-        )
-
-        incident.add_column(
-            "Field",
-            style="bold",
-            width=18,
-        )
-        incident.add_column("Value")
-
-        incident.add_row(
-            "Signature",
-            str(top.get("signature", "Unknown")),
-        )
-        incident.add_row(
-            "Priority",
-            str(top.get("priority_tier", "Unknown")),
-        )
-        incident.add_row(
-            "Score",
-            str(top.get("priority_score", "Unknown")),
-        )
-        incident.add_row(
-            "Source",
-            str(top.get("src_ip", "Unknown")),
-        )
-        incident.add_row(
-            "Target",
-            str(top.get("dest_ip", "Unknown")),
-        )
-
-        mitre_matches = top.get("mitre", [])
-
-        if mitre_matches:
-            mitre_text = ", ".join(
-                f"{item.get('technique_id')} — "
-                f"{item.get('technique')}"
-                for item in mitre_matches
-            )
-        else:
-            mitre_text = "No MITRE technique matched"
-
-        incident.add_row(
-            "MITRE ATT&CK",
-            mitre_text,
-        )
-
-        console.print(
-            Panel(
-                incident,
-                title="TOP INCIDENT",
-                border_style="yellow",
-                box=box.ROUNDED,
-            )
-        )
-
-    console.print(
-        Panel(
-            result.get(
-                "summary",
-                "No incident summary available.",
-            ),
-            title="INCIDENT SUMMARY",
-            border_style="blue",
-            box=box.ROUNDED,
-        )
-    )
-
-    console.print(
-        f"[dim]{len(alerts)} deduped alerts — "
-        "use --json for machine-readable output[/dim]"
-    )
-
-    return EXIT_OK
 
 
 cmd_triage = make_cmd_triage(
