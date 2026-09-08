@@ -95,6 +95,62 @@ def detect_hash_type(value: str) -> str | None:
     return None
 
 
+def extract_iocs(text: str) -> dict[str, list[str]]:
+    """Extract IP addresses, domains, and file hashes from arbitrary text.
+
+    Extraction is intentionally reputation-neutral: it only identifies IOC
+    candidates. Reputation lookups happen in the provider-specific functions.
+    """
+    text = text or ""
+
+    ip_pattern = re.compile(
+        r"(?<![\w.])"
+        r"(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}"
+        r"(?:25[0-5]|2[0-4]\d|1?\d?\d)"
+        r"(?![\w.])"
+    )
+
+    domain_pattern = re.compile(
+        r"(?<![@\w-])"
+        r"(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+"
+        r"[a-zA-Z]{2,63}"
+        r"(?![\w-])"
+    )
+
+    hashes = {
+        value.lower()
+        for value in re.findall(
+            r"(?<![a-fA-F0-9])"
+            r"(?:[a-fA-F0-9]{64}|[a-fA-F0-9]{40}|[a-fA-F0-9]{32})"
+            r"(?![a-fA-F0-9])",
+            text,
+        )
+        if detect_hash_type(value) is not None
+    }
+
+    ips = list(dict.fromkeys(ip_pattern.findall(text)))
+
+    domains = []
+    for domain in domain_pattern.findall(text):
+        normalized = domain.rstrip(".").lower()
+
+        # Avoid treating plain IPv4-looking labels as domains.
+        try:
+            ipaddress.ip_address(normalized)
+            continue
+        except ValueError:
+            pass
+
+        if normalized not in domains:
+            domains.append(normalized)
+
+    return {
+        "ips": ips,
+        "domains": domains,
+        "hashes": sorted(hashes),
+    }
+
+
 def _verdict_from_score(score: float) -> str:
     if score >= config.VERDICT_MALICIOUS_THRESHOLD:
         return "malicious"
