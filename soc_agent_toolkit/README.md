@@ -59,7 +59,7 @@ normalized alerts
 ## Setup
 
 ```bash
-pip install -r requirements.txt
+pip install soc-agent-toolkit
 
 # Set whichever of these you have — every module degrades gracefully without them:
 export ANTHROPIC_API_KEY=...      # for AI-written summaries / the agentic loop
