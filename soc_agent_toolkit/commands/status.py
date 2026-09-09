@@ -6,6 +6,7 @@ import json
 import os
 import platform
 from argparse import Namespace
+from importlib.metadata import PackageNotFoundError, version as package_version
 
 from rich import box
 from rich.console import Console
@@ -16,7 +17,11 @@ from .. import config
 console = Console()
 
 EXIT_OK = 0
-VERSION = "0.1.0"
+
+try:
+    VERSION = package_version("soc-agent-toolkit")
+except PackageNotFoundError:
+    VERSION = "unknown"
 
 
 def cmd_status(args: Namespace) -> int:
@@ -129,7 +134,13 @@ def cmd_status(args: Namespace) -> int:
             },
         }
 
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        print(
+            json.dumps(
+                result,
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return EXIT_OK
 
     console.print(table)

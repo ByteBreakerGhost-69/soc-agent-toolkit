@@ -1,12 +1,16 @@
 """Version command."""
 
 from argparse import Namespace
+from importlib.metadata import PackageNotFoundError, version as package_version
 
 from rich.console import Console
 
 console = Console()
 
-VERSION = "0.1.0"
+try:
+    VERSION = package_version("soc-agent-toolkit")
+except PackageNotFoundError:
+    VERSION = "unknown"
 
 
 def cmd_version(_: Namespace) -> int:
