@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "soc-agent-toolkit"
-version = "0.1.1"
+version = "0.1.2"
 description = "AI-assisted SOC alert triage and incident analysis toolkit"
 readme = "README.md"
 requires-python = ">=3.10"
