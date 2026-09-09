@@ -27,7 +27,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install package
-        run: python -m pip install --upgrade pip && python -m pip install -e .
+        run: |
+          python -m pip install --upgrade pip setuptools
+          python -m pip install -e .
 
       - name: Install test and security tools
         run: python -m pip install pytest bandit pip-audit
