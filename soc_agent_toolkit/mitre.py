@@ -26,7 +26,7 @@ import json
 import os
 import re
 import time
-import urllib.request
+import requests
 from typing import Any
 
 from . import config
@@ -92,8 +92,20 @@ def _download_stix_bundle() -> dict[str, Any] | None:
     logger.info("Downloading MITRE ATT&CK STIX bundle from %s (one-time, cached to %s)",
                 config.MITRE_STIX_URL, config.MITRE_CACHE_PATH)
     try:
-        with urllib.request.urlopen(config.MITRE_STIX_URL, timeout=30) as resp:
-            data = json.loads(resp.read())
+        url = config.MITRE_STIX_URL
+        if not url.startswith("https://"):
+            logger.error("MITRE STIX URL must use HTTPS")
+            return None
+
+        resp = requests.get(url, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+
+        os.makedirs(
+            os.path.dirname(config.MITRE_CACHE_PATH),
+            exist_ok=True,
+        )
+
         with open(config.MITRE_CACHE_PATH, "w", encoding="utf-8") as f:
             json.dump({"fetched_at": time.time(), "bundle": data}, f)
         return data

@@ -93,7 +93,10 @@ MITRE_STIX_URL = os.environ.get(
     "SOC_MITRE_STIX_URL",
     "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
 )
-MITRE_CACHE_PATH = os.environ.get("SOC_MITRE_CACHE_PATH", "/tmp/soc_agent_toolkit_mitre_cache.json")
+MITRE_CACHE_PATH = os.environ.get(
+    "SOC_MITRE_CACHE_PATH",
+    os.path.expanduser("~/.cache/soc-agent-toolkit/mitre.json"),
+)
 MITRE_CACHE_TTL_SECONDS = _env_int("SOC_MITRE_CACHE_TTL", 7 * 24 * 3600)  # 1 week
 
 # --- Async enrichment -----------------------------------------------------
